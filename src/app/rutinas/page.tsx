@@ -13,6 +13,7 @@ interface Rutina {
   isActive: boolean
   createdAt: string
   ejercicios_count?: number
+  total_sets?: number
 }
 
 export default function RutinasPage() {
@@ -173,14 +174,19 @@ export default function RutinasPage() {
                     </div>
                   )}
                   
-                  <div className="text-sm text-gray-500 mb-4">
-                    <span>📅 {rutina.createdAt ? new Date(rutina.createdAt).toLocaleDateString('es-ES', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    }) : 'Fecha no disponible'}</span>
-                    <br />
-                    <span>🏋️ {rutina.ejercicios_count || 0} ejercicios</span>
+                  <div className="text-sm text-gray-500 mb-4 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span>📅</span>
+                      <span>{rutina.createdAt ? new Date(rutina.createdAt).toLocaleDateString('es-ES', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      }) : 'Fecha no disponible'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span>💪</span>
+                      <span>{rutina.ejercicios_count || 0} ejercicios • {rutina.total_sets || 0} series</span>
+                    </div>
                   </div>
                   
                   <div className="flex items-center justify-end pt-4 border-t space-x-2">

@@ -53,13 +53,14 @@ export async function GET(request: NextRequest) {
         .orderBy(rutinas.createdAt)
 
       if (!includeEjercicios) {
-        // Obtener conteo total de ejercicios para cada rutina
+        // Obtener conteo total de ejercicios y suma de sets para cada rutina
         const rutinasWithCount = await Promise.all(
           userRutinas.map(async (rutina) => {
-            // Contar TODOS los ejercicios (no solo únicos)
-            const countResult = await db
+            // Contar TODOS los ejercicios y sumar sets
+            const statsResult = await db
               .select({ 
-                count: sql<number>`COUNT(*)` 
+                count: sql<number>`COUNT(*)`,
+                totalSets: sql<number>`COALESCE(SUM(${rutinaEjercicios.sets}), 0)`
               })
               .from(rutinaEjercicios)
               .where(eq(rutinaEjercicios.rutinaId, rutina.id))
@@ -67,7 +68,8 @@ export async function GET(request: NextRequest) {
             return {
               ...rutina,
               daysOfWeek: rutina.daysOfWeek ? JSON.parse(rutina.daysOfWeek) : [],
-              ejercicios_count: Number(countResult[0]?.count || 0)
+              ejercicios_count: Number(statsResult[0]?.count || 0),
+              total_sets: Number(statsResult[0]?.totalSets || 0)
             }
           })
         )

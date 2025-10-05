@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
 import { MagnifyingGlassIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline'
@@ -100,6 +100,11 @@ export default function EditarRutinaPage() {
   const [filteredEjercicios, setFilteredEjercicios] = useState<Ejercicio[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedBodyPart, setSelectedBodyPart] = useState('')
+  // Infinite scroll states
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [isFetchingMore, setIsFetchingMore] = useState(false)
+  const observerRef = useRef<HTMLDivElement | null>(null)
   const [showEjercicioSelector, setShowEjercicioSelector] = useState(false)
   const [showEjercicioConfig, setShowEjercicioConfig] = useState(false)
   const [selectedEjercicio, setSelectedEjercicio] = useState<Ejercicio | null>(null)
@@ -108,8 +113,10 @@ export default function EditarRutinaPage() {
   })
   const [selectedDay, setSelectedDay] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [loadingEjercicios, setLoadingEjercicios] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
   // Cargar rutina existente
   useEffect(() => {
@@ -118,15 +125,48 @@ export default function EditarRutinaPage() {
     }
   }, [rutinaId])
 
+  // Infinite scroll: Reset offset and results when search/filter changes or modal opens
   useEffect(() => {
-    if (showEjercicioSelector) {
-      fetchEjercicios()
-    }
-  }, [showEjercicioSelector, selectedBodyPart])
+    if (!showEjercicioSelector) return
+    setOffset(0)
+    setHasMore(true)
+    setEjercicios([])
+    setFilteredEjercicios([])
+  }, [showEjercicioSelector, searchTerm, selectedBodyPart])
 
+  // Infinite scroll: Debounced fetch on search/filter/modal open
   useEffect(() => {
-    filterEjercicios()
-  }, [searchTerm, selectedBodyPart, ejercicios])
+    if (!showEjercicioSelector) return
+    const debounceTimer = setTimeout(() => {
+      fetchEjercicios(0, true)
+    }, 500)
+    return () => clearTimeout(debounceTimer)
+    // eslint-disable-next-line
+  }, [showEjercicioSelector, searchTerm, selectedBodyPart])
+
+  // Infinite scroll: Observer for sentinel div
+  useEffect(() => {
+    if (!showEjercicioSelector || !hasMore || loadingEjercicios || isFetchingMore) return
+    
+    const currentObserverRef = observerRef.current
+    if (!currentObserverRef) return
+
+    const observer = new window.IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !isFetchingMore && !loadingEjercicios) {
+        fetchEjercicios(offset, false)
+      }
+    }, { threshold: 0.1, rootMargin: '50px' })
+    
+    observer.observe(currentObserverRef)
+    
+    return () => {
+      if (currentObserverRef) {
+        observer.unobserve(currentObserverRef)
+      }
+      observer.disconnect()
+    }
+    // eslint-disable-next-line
+  }, [hasMore, offset, showEjercicioSelector, loadingEjercicios, isFetchingMore])
 
   const fetchRutina = async () => {
     try {
@@ -179,59 +219,67 @@ export default function EditarRutinaPage() {
     }
   }
 
-  const fetchEjercicios = async () => {
+  // Infinite scroll: Fetch ejercicios with pagination
+  const fetchEjercicios = useCallback(async (customOffset = 0, reset = false) => {
     try {
-      setLoading(true)
+      if (reset) setLoadingEjercicios(true)
+      setIsFetchingMore(!reset)
       const token = localStorage.getItem('accessToken')
-      
       const params = new URLSearchParams({
-        limit: '500'
+        limit: '30',
+        offset: customOffset.toString()
       })
-      
+      if (searchTerm && searchTerm.length >= 1) {
+        params.append('search', searchTerm)
+      }
       if (selectedBodyPart) {
         params.append('bodyPart', selectedBodyPart)
       }
-      
+      if (!searchTerm && !selectedBodyPart) {
+        setEjercicios([])
+        setFilteredEjercicios([])
+        setLoadingEjercicios(false)
+        setIsFetchingMore(false)
+        setHasMore(false)
+        return
+      }
+      if (searchTerm && !selectedBodyPart && searchTerm.length < 2) {
+        setEjercicios([])
+        setFilteredEjercicios([])
+        setLoadingEjercicios(false)
+        setIsFetchingMore(false)
+        setHasMore(false)
+        return
+      }
       const response = await fetch(`/api/ejercicios?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-
       const data = await response.json()
-      
       if (data.success) {
-        setEjercicios(data.data || [])
+        if (reset) {
+          setEjercicios(data.data || [])
+          setFilteredEjercicios(data.data || [])
+        } else {
+          setEjercicios(prev => [...prev, ...(data.data || [])])
+          setFilteredEjercicios(prev => [...prev, ...(data.data || [])])
+        }
+        const newOffset = customOffset + (data.data?.length || 0)
+        setOffset(newOffset)
+        setHasMore(data.pagination?.hasMore ?? false)
       } else {
         setError('Error al cargar ejercicios')
+        setHasMore(false)
       }
     } catch (err) {
       setError('Error de conexión')
+      setHasMore(false)
     } finally {
-      setLoading(false)
+      setLoadingEjercicios(false)
+      setIsFetchingMore(false)
     }
-  }
-
-  const filterEjercicios = () => {
-    let filtered = ejercicios
-
-    if (searchTerm) {
-      filtered = filtered.filter(ejercicio => 
-        ejercicio.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ejercicio.nameEs?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ejercicio.target.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ejercicio.bodyPartEs.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
-
-    if (selectedBodyPart) {
-      filtered = filtered.filter(ejercicio => 
-        ejercicio.bodyPart === selectedBodyPart
-      )
-    }
-
-    setFilteredEjercicios(filtered)
-  }
+  }, [searchTerm, selectedBodyPart])
 
   const handleDayToggle = (day: string) => {
     setRutina(prev => {
@@ -375,7 +423,11 @@ export default function EditarRutinaPage() {
       const data = await response.json()
 
       if (data.success) {
-        router.push('/rutinas')
+        // Mostrar mensaje de éxito sin redirigir
+        setError('')
+        setSuccessMessage('✅ Rutina actualizada correctamente')
+        // Ocultar mensaje después de 3 segundos
+        setTimeout(() => setSuccessMessage(''), 3000)
       } else {
         setError(data.error || 'Error al actualizar rutina')
       }
@@ -420,6 +472,12 @@ export default function EditarRutinaPage() {
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center">
+            <span>{successMessage}</span>
           </div>
         )}
 
@@ -667,45 +725,83 @@ export default function EditarRutinaPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-6">
-                {loading ? (
+                {loadingEjercicios ? (
                   <div className="flex justify-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                   </div>
+                ) : !searchTerm && !selectedBodyPart ? (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-2">🔍</div>
+                    <p className="font-semibold mb-1 text-gray-700">Busca o filtra ejercicios</p>
+                    <p className="text-sm text-gray-500">Selecciona un grupo muscular o escribe para buscar</p>
+                  </div>
+                ) : searchTerm && !selectedBodyPart && searchTerm.length < 2 ? (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-2">✍️</div>
+                    <p className="font-semibold mb-1 text-gray-700">Escribe más caracteres</p>
+                    <p className="text-sm text-gray-500">Necesitas al menos 2 letras para buscar</p>
+                  </div>
                 ) : filteredEjercicios.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-gray-500">No se encontraron ejercicios</p>
+                    <div className="text-4xl mb-2">😕</div>
+                    <p className="text-gray-700">No se encontraron ejercicios</p>
+                    <p className="text-sm text-gray-500 mt-1">Prueba con otra búsqueda</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredEjercicios.map((ejercicio) => (
-                      <div
-                        key={ejercicio.id}
-                        onClick={() => addEjercicioToDay(ejercicio, selectedDay)}
-                        className="border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md cursor-pointer transition-all"
-                      >
-                        <div className="flex items-start space-x-3">
-                          {ejercicio.gifUrl && (
-                            <img
-                              src={ejercicio.gifUrl}
-                              alt={ejercicio.nameEs}
-                              className="w-20 h-20 rounded object-cover"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-gray-900 truncate">
-                              {ejercicio.nameEs || ejercicio.name}
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                              {ejercicio.bodyPartEs || ejercicio.bodyPart}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {ejercicio.equipmentEs || ejercicio.equipment}
-                            </p>
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {filteredEjercicios.map((ejercicio) => (
+                        <div
+                          key={ejercicio.id}
+                          onClick={() => addEjercicioToDay(ejercicio, selectedDay)}
+                          className="border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:shadow-md cursor-pointer transition-all"
+                        >
+                          <div className="flex items-start space-x-3">
+                            {ejercicio.gifUrl && (
+                              <img
+                                src={ejercicio.gifUrl}
+                                alt={ejercicio.nameEs}
+                                className="w-20 h-20 rounded object-cover"
+                                loading="lazy"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-gray-900 truncate">
+                                {ejercicio.nameEs || ejercicio.name}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                {ejercicio.bodyPartEs || ejercicio.bodyPart}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {ejercicio.equipmentEs || ejercicio.equipment}
+                              </p>
+                            </div>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                    {/* Infinite scroll sentinel */}
+                    {filteredEjercicios.length > 0 && (
+                      <div 
+                        ref={observerRef} 
+                        className="w-full py-4 flex items-center justify-center"
+                        style={{ minHeight: '60px' }}
+                      >
+                        {isFetchingMore && (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                            <span className="text-blue-600 text-sm font-medium">Cargando más ejercicios...</span>
+                          </div>
+                        )}
+                        {!isFetchingMore && hasMore && (
+                          <span className="text-gray-400 text-xs">Desplázate para cargar más</span>
+                        )}
+                        {!hasMore && !loadingEjercicios && (
+                          <span className="text-gray-400 text-sm">✓ Todos los ejercicios cargados</span>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
