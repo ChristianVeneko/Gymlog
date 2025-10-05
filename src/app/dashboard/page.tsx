@@ -86,27 +86,35 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
       {/* Header simplificado */}
       <div className="bg-white shadow-lg border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                🏋️‍♂️ GymLog
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4 sm:py-6 gap-2 sm:gap-4">
+            <div className="flex-shrink-0">
+              <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-1 sm:gap-2">
+                <span className="text-xl sm:text-4xl">🏋️‍♂️</span> 
+                <span className="hidden xs:inline">GymLog</span>
+                <span className="inline xs:hidden">GL</span>
               </h1>
-              <p className="text-gray-600 text-lg">
-                Bienvenido, <span className="font-semibold text-gray-800">{user?.name || 'Usuario'}</span>
+              <p className="text-gray-600 text-xs sm:text-lg mt-1">
+                Bienvenido, <span className="font-semibold text-gray-800">{user?.name?.split(' ')[0] || 'Usuario'}</span>
               </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {/* Indicador de día actual */}
-              <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">{getDayOfWeek()}</div>
-                <div className="text-sm text-gray-600">{getCurrentDate()}</div>
+              <div className="text-right hidden sm:block">
+                <div className="text-xl sm:text-2xl font-bold text-gray-900">{getDayOfWeek()}</div>
+                <div className="text-xs sm:text-sm text-gray-600">{getCurrentDate()}</div>
+              </div>
+              {/* Versión móvil del día */}
+              <div className="text-right block sm:hidden">
+                <div className="text-base font-bold text-gray-900">{getDayOfWeek()}</div>
+                <div className="text-xs text-gray-600">{new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</div>
               </div>
               <button 
                 onClick={logout} 
-                className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all duration-200 font-medium"
+                className="px-3 py-2 sm:px-6 sm:py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg sm:rounded-xl transition-all duration-200 font-medium text-xs sm:text-base whitespace-nowrap"
               >
-                Cerrar sesión
+                <span className="hidden sm:inline">Cerrar sesión</span>
+                <span className="inline sm:hidden">Salir</span>
               </button>
             </div>
           </div>

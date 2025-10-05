@@ -283,61 +283,100 @@ async function fetchExercisesFromAPI(
     
     console.log('🔍 API Request - Search:', searchTerm, 'BodyPart:', bodyPartFilter, 'Muscle:', muscleFilter)
     
-    // Estrategia de búsqueda mejorada - SIEMPRE usar 25 (límite máximo de la API)
-    if (bodyPartFilter) {
-      // Usar endpoint específico de body parts (MÁS RÁPIDO Y PRECISO)
+
+    // Estrategia combinada: si hay bodyPart y search, primero filtrar por bodyPart, luego filtrar por search en los resultados
+    // Permitir hasta 100 por página
+    const safeLimit = Math.min(Math.max(limit, 1), 100)
+    if (bodyPartFilter && searchTerm) {
+      // 1. Obtener todos los ejercicios del bodyPart
       const params = new URLSearchParams({
-        limit: '25', // Máximo según API oficial
+        limit: safeLimit.toString(),
         offset: offset.toString()
       })
       url = `${baseUrl}/api/v1/bodyparts/${encodeURIComponent(bodyPartFilter)}/exercises?${params.toString()}`
-      
-    } else if (muscleFilter) {
-      // Usar endpoint específico de músculos (MÁS RÁPIDO Y PRECISO)
+      console.log('🌐 Fetching from:', url)
+      response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'GymLog-App/1.0'
+        }
+      })
+      if (!response.ok) {
+        console.error(`ExerciseDB API error: ${response.status} - ${response.statusText}`)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      const data: ExerciseDBResponse = await response.json()
+      if (!data.success || !data.data) {
+        throw new Error('API returned invalid data structure')
+      }
+      // 2. Filtrar por searchTerm en los resultados
+      const filtered = data.data.filter(exercise =>
+        exercise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (exercise.targetMuscles && exercise.targetMuscles.some(m => m.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+        (exercise.bodyParts && exercise.bodyParts.some(bp => bp.toLowerCase().includes(searchTerm.toLowerCase())))
+      )
+      const processedExercises: ProcessedExercise[] = filtered.map(exercise => ({
+        id: exercise.exerciseId,
+        name: exercise.name,
+        nameEs: translateExerciseName(exercise.name),
+        bodyPart: exercise.bodyParts[0] || 'unknown',
+        bodyPartEs: displayTranslations[exercise.bodyParts[0]] || exercise.bodyParts[0] || 'Desconocido',
+        equipment: exercise.equipments[0] || 'unknown',
+        equipmentEs: displayTranslations[exercise.equipments[0]] || exercise.equipments[0] || 'Desconocido',
+        target: exercise.targetMuscles[0] || 'unknown',
+        targetEs: displayTranslations[exercise.targetMuscles[0]] || exercise.targetMuscles[0] || 'Desconocido',
+        instructions: exercise.instructions || [],
+        gifUrl: exercise.gifUrl || ''
+      }))
+      return {
+        exercises: processedExercises,
+        total: processedExercises.length
+      }
+    } else if (bodyPartFilter) {
+      // Usar endpoint específico de body parts
       const params = new URLSearchParams({
-        limit: '25', // Máximo según API oficial
+        limit: safeLimit.toString(),
+        offset: offset.toString()
+      })
+      url = `${baseUrl}/api/v1/bodyparts/${encodeURIComponent(bodyPartFilter)}/exercises?${params.toString()}`
+    } else if (muscleFilter) {
+      // Usar endpoint específico de músculos
+      const params = new URLSearchParams({
+        limit: safeLimit.toString(),
         offset: offset.toString(),
-        includeSecondary: 'true' // Incluir ejercicios donde es músculo secundario
+        includeSecondary: 'true'
       })
       url = `${baseUrl}/api/v1/muscles/${encodeURIComponent(muscleFilter)}/exercises?${params.toString()}`
-      
     } else {
-      // Usar búsqueda general con parámetros mejorados
+      // Usar búsqueda general
       const params = new URLSearchParams({
-        limit: '25', // Máximo según API oficial
+        limit: safeLimit.toString(),
         offset: offset.toString(),
-        sortBy: 'name', // Ordenar por nombre para consistencia
+        sortBy: 'name',
         sortOrder: 'asc'
       })
-      
       if (searchTerm) {
         params.append('search', searchTerm)
       }
-      
       url = `${baseUrl}/api/v1/exercises?${params.toString()}`
     }
-    
+
     console.log('🌐 Fetching from:', url)
-    
     response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'GymLog-App/1.0'
       }
     })
-    
     if (!response.ok) {
       console.error(`ExerciseDB API error: ${response.status} - ${response.statusText}`)
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
     const data: ExerciseDBResponse = await response.json()
-    
     if (!data.success || !data.data) {
       throw new Error('API returned invalid data structure')
     }
-    
-    // Procesar ejercicios con información más completa
+    // Procesar ejercicios
     const processedExercises: ProcessedExercise[] = data.data.map(exercise => ({
       id: exercise.exerciseId,
       name: exercise.name,
@@ -351,9 +390,7 @@ async function fetchExercisesFromAPI(
       instructions: exercise.instructions || [],
       gifUrl: exercise.gifUrl || ''
     }))
-    
     console.log(`✅ Fetched ${processedExercises.length} exercises`)
-    
     return {
       exercises: processedExercises,
       total: data.metadata?.totalExercises || processedExercises.length
@@ -586,46 +623,63 @@ function getFallbackExercises(
     }
   ]
   
-  // Filtrar por búsqueda si existe
+  // Filtrado combinado: si hay bodyPart y search, primero filtrar por bodyPart, luego por search
+  // Permitir hasta 100 por página
+  const safeLimit = Math.min(Math.max(limit, 1), 100)
   let filtered = fallbackExercises
-  if (search) {
-    const searchLower = search.toLowerCase()
+  if (bodyPart && search) {
+    const bodyPartLower = bodyPart.toLowerCase()
+    const bodyPartTranslated = translateSearchTerm(bodyPart).toLowerCase()
     filtered = fallbackExercises.filter(exercise =>
+      exercise.bodyPart.toLowerCase().includes(bodyPartLower) ||
+      exercise.bodyPart.toLowerCase().includes(bodyPartTranslated) ||
+      exercise.bodyPartEs.toLowerCase().includes(bodyPartLower)
+    )
+    const searchLower = search.toLowerCase()
+    filtered = filtered.filter(exercise =>
       exercise.name.toLowerCase().includes(searchLower) ||
       exercise.nameEs.toLowerCase().includes(searchLower) ||
       exercise.bodyPartEs.toLowerCase().includes(searchLower) ||
       exercise.equipmentEs.toLowerCase().includes(searchLower) ||
       exercise.targetEs.toLowerCase().includes(searchLower)
     )
+  } else {
+    // Filtrar por búsqueda si existe
+    if (search) {
+      const searchLower = search.toLowerCase()
+      filtered = fallbackExercises.filter(exercise =>
+        exercise.name.toLowerCase().includes(searchLower) ||
+        exercise.nameEs.toLowerCase().includes(searchLower) ||
+        exercise.bodyPartEs.toLowerCase().includes(searchLower) ||
+        exercise.equipmentEs.toLowerCase().includes(searchLower) ||
+        exercise.targetEs.toLowerCase().includes(searchLower)
+      )
+    }
+    // Filtrar por parte del cuerpo si existe
+    if (bodyPart) {
+      const bodyPartLower = bodyPart.toLowerCase()
+      const bodyPartTranslated = translateSearchTerm(bodyPart).toLowerCase()
+      filtered = filtered.filter(exercise =>
+        exercise.bodyPart.toLowerCase().includes(bodyPartLower) ||
+        exercise.bodyPart.toLowerCase().includes(bodyPartTranslated) ||
+        exercise.bodyPartEs.toLowerCase().includes(bodyPartLower)
+      )
+    }
+    // Filtrar por músculo si existe
+    if (muscle) {
+      const muscleLower = muscle.toLowerCase()
+      const muscleTranslated = translateSearchTerm(muscle).toLowerCase()
+      filtered = filtered.filter(exercise =>
+        exercise.target.toLowerCase().includes(muscleLower) ||
+        exercise.target.toLowerCase().includes(muscleTranslated) ||
+        exercise.targetEs.toLowerCase().includes(muscleLower)
+      )
+    }
   }
-
-  // Filtrar por parte del cuerpo si existe
-  if (bodyPart) {
-    const bodyPartLower = bodyPart.toLowerCase()
-    const bodyPartTranslated = translateSearchTerm(bodyPart).toLowerCase()
-    filtered = filtered.filter(exercise =>
-      exercise.bodyPart.toLowerCase().includes(bodyPartLower) ||
-      exercise.bodyPart.toLowerCase().includes(bodyPartTranslated) ||
-      exercise.bodyPartEs.toLowerCase().includes(bodyPartLower)
-    )
-  }
-
-  // Filtrar por músculo si existe
-  if (muscle) {
-    const muscleLower = muscle.toLowerCase()
-    const muscleTranslated = translateSearchTerm(muscle).toLowerCase()
-    filtered = filtered.filter(exercise =>
-      exercise.target.toLowerCase().includes(muscleLower) ||
-      exercise.target.toLowerCase().includes(muscleTranslated) ||
-      exercise.targetEs.toLowerCase().includes(muscleLower)
-    )
-  }
-  
   // Aplicar paginación
   const start = offset
-  const end = offset + limit
+  const end = offset + safeLimit
   const paginatedExercises = filtered.slice(start, end)
-  
   return {
     exercises: paginatedExercises,
     total: filtered.length
