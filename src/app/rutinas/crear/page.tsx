@@ -134,17 +134,26 @@ export default function CrearRutinaPage() {
         limit: '50' // ⚡ OPTIMIZADO: Solo cargar 50 ejercicios por búsqueda
       })
       
-      // Solo buscar si hay un término de búsqueda o filtro seleccionado
-      if (searchTerm && searchTerm.length >= 2) {
+      // Agregar término de búsqueda si existe (sin mínimo si hay filtro de bodyPart)
+      if (searchTerm && searchTerm.length >= 1) {
         params.append('search', searchTerm)
       }
       
+      // Agregar filtro de grupo muscular si existe
       if (selectedBodyPart) {
         params.append('bodyPart', selectedBodyPart)
       }
 
       // Si no hay búsqueda ni filtro, mostrar mensaje al usuario
       if (!searchTerm && !selectedBodyPart) {
+        setEjercicios([])
+        setFilteredEjercicios([])
+        setLoading(false)
+        return
+      }
+
+      // Si solo hay searchTerm, requerir mínimo 2 caracteres
+      if (searchTerm && !selectedBodyPart && searchTerm.length < 2) {
         setEjercicios([])
         setFilteredEjercicios([])
         setLoading(false)
@@ -637,7 +646,13 @@ export default function CrearRutinaPage() {
                 <div className="text-center py-8 text-gray-500">
                   <div className="text-4xl mb-2">🔍</div>
                   <p className="font-semibold mb-1">Busca o filtra ejercicios</p>
-                  <p className="text-sm">Escribe al menos 2 letras o selecciona un grupo muscular</p>
+                  <p className="text-sm">Selecciona un grupo muscular o escribe para buscar</p>
+                </div>
+              ) : searchTerm && !selectedBodyPart && searchTerm.length < 2 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-4xl mb-2">✍️</div>
+                  <p className="font-semibold mb-1">Escribe más caracteres</p>
+                  <p className="text-sm">Necesitas al menos 2 letras para buscar</p>
                 </div>
               ) : filteredEjercicios.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
