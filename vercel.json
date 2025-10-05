@@ -5,15 +5,6 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "DATABASE_AUTH_TOKEN": "@database_auth_token",
-    "JWT_SECRET": "@jwt_secret",
-    "JWT_REFRESH_SECRET": "@jwt_refresh_secret",
-    "EXERCISEDB_API_URL": "@exercisedb_api_url",
-    "GEMINI_API_KEY": "@gemini_api_key",
-    "NEXTAUTH_SECRET": "@nextauth_secret"
-  },
   "headers": [
     {
       "source": "/api/(.*)",
