@@ -756,9 +756,25 @@ export default function CrearRutinaPage() {
                   min="1"
                   max="10"
                   value={ejercicioConfig.sets}
-                  onChange={(e) => setEjercicioConfig({ 
-                    sets: parseInt(e.target.value) || 1 
-                  })}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    // Permitir vacío temporalmente o número válido
+                    if (value === '' || value === '0') {
+                      setEjercicioConfig({ sets: '' as any })
+                    } else {
+                      const num = parseInt(value)
+                      if (num >= 1 && num <= 10) {
+                        setEjercicioConfig({ sets: num })
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Al perder foco, si está vacío o es 0, poner 1
+                    const value = e.target.value
+                    if (value === '' || value === '0' || parseInt(value) < 1) {
+                      setEjercicioConfig({ sets: 1 })
+                    }
+                  }}
                   className="block w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <p className="mt-2 text-sm text-gray-500">

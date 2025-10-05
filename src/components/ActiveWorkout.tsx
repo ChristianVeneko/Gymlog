@@ -476,8 +476,21 @@ export default function ActiveWorkout() {
                     <div>
                       <input
                         type="number"
-                        value={setData?.weight || ''}
-                        onChange={(e) => updateSet(exercise.id, setNumber, 'weight', parseFloat(e.target.value) || 0)}
+                        step="0.5"
+                        min="0"
+                        value={setData?.weight ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          // Permitir vacío o número válido
+                          if (value === '') {
+                            updateSet(exercise.id, setNumber, 'weight', '')
+                          } else {
+                            const num = parseFloat(value)
+                            if (!isNaN(num) && num >= 0) {
+                              updateSet(exercise.id, setNumber, 'weight', num)
+                            }
+                          }
+                        }}
                         placeholder="Peso"
                         className="w-full px-2 py-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-sm"
                       />
@@ -487,8 +500,20 @@ export default function ActiveWorkout() {
                     <div>
                       <input
                         type="number"
-                        value={setData?.reps || ''}
-                        onChange={(e) => updateSet(exercise.id, setNumber, 'reps', parseInt(e.target.value) || 0)}
+                        min="0"
+                        value={setData?.reps ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          // Permitir vacío o número válido
+                          if (value === '') {
+                            updateSet(exercise.id, setNumber, 'reps', '')
+                          } else {
+                            const num = parseInt(value)
+                            if (!isNaN(num) && num >= 0) {
+                              updateSet(exercise.id, setNumber, 'reps', num)
+                            }
+                          }
+                        }}
                         placeholder="Reps"
                         className="w-full px-2 py-1 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-sm"
                       />
@@ -562,7 +587,25 @@ export default function ActiveWorkout() {
                   min="1"
                   max="300"
                   value={manualDuration}
-                  onChange={(e) => setManualDuration(parseInt(e.target.value) || 60)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    // Permitir vacío temporalmente o número válido
+                    if (value === '' || value === '0') {
+                      setManualDuration('' as any)
+                    } else {
+                      const num = parseInt(value)
+                      if (num >= 1 && num <= 300) {
+                        setManualDuration(num)
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Al perder foco, si está vacío, poner 60
+                    const value = e.target.value
+                    if (value === '' || value === '0' || parseInt(value) < 1) {
+                      setManualDuration(60)
+                    }
+                  }}
                   className="block w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   placeholder="60"
                 />
