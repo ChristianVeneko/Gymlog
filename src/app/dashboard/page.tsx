@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const [recentWorkouts, setRecentWorkouts] = useState<any[]>([])
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null)
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const token = localStorage.getItem('accessToken')
       if (!token) {
@@ -45,11 +45,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [logout])
 
   useEffect(() => {
     fetchDashboardData()
-  }, [logout])
+  }, [fetchDashboardData])
 
   // Escuchar evento de entrenamiento finalizado
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
     window.addEventListener('workoutFinished', handleWorkoutFinished)
     return () => window.removeEventListener('workoutFinished', handleWorkoutFinished)
-  }, [logout])
+  }, [fetchDashboardData])
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

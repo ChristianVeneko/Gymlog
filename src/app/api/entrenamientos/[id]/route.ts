@@ -190,11 +190,11 @@ export async function PATCH(
 // DELETE: Eliminar entrenamiento
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return withAuth(request, async (req, user) => {
     try {
-      const entrenamientoId = params.id
+      const { id: entrenamientoId } = await params
 
       // Verificar que el entrenamiento pertenece al usuario
       const entrenamiento = await db
