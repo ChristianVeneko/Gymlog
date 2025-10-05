@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1759524870856,
+      "tag": "0000_slippery_silver_samurai",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1759609129062,
+      "tag": "0001_next_sister_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1759610065767,
+      "tag": "0002_careless_the_hand",
+      "breakpoints": true
+    }
+  ]
+}
