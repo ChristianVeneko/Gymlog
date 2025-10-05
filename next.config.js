@@ -1,13 +1,53 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [
-      'v2.exercisedb.io',
-      'exercisedb.io'
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'v2.exercisedb.io',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'exercisedb.io',
+        pathname: '/**',
+      },
     ],
   },
   env: {
     CUSTOM_KEY: 'gymlog-app',
+  },
+  // Optimizaciones para producción
+  reactStrictMode: true,
+  swcMinify: true,
+  poweredByHeader: false,
+  compress: true,
+  
+  // Headers de seguridad
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin'
+          },
+        ],
+      },
+    ]
   },
 }
 
