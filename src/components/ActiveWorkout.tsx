@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { getLocalDate, getLocalDayOfWeek, getLocalTime } from '@/lib/utils/dateUtils'
+import { getLocalDate, getLocalDayOfWeek, getBrowserTimezone } from '@/lib/utils/dateUtils'
 
 interface Exercise {
   id: string
@@ -73,7 +73,7 @@ export default function ActiveWorkout() {
     try {
       const token = localStorage.getItem('accessToken')
       // ✅ CORREGIDO: Usar fecha local de Venezuela
-      const today = getLocalDate('America/Caracas')
+      const today = getLocalDate()
       
       const response = await fetch(`/api/entrenamientos/active?fecha=${today}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -156,7 +156,7 @@ export default function ActiveWorkout() {
     try {
       const token = localStorage.getItem('accessToken')
       // ✅ CORREGIDO: Usar fecha local de Venezuela
-      const today = getLocalDate('America/Caracas')
+      const today = getLocalDate()
       
       // ✅ NUEVO: Verificar si ya existe un entrenamiento de esta rutina hoy
       const checkResponse = await fetch(`/api/entrenamientos?fecha=${today}&rutinaId=${rutinaId}`, {
@@ -177,7 +177,8 @@ export default function ActiveWorkout() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'X-Timezone': getBrowserTimezone()
         },
         body: JSON.stringify({
           rutinaId,
@@ -333,7 +334,7 @@ export default function ActiveWorkout() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {rutinas.map(rutina => {
                 // ✅ CORREGIDO: Usar zona horaria local (Venezuela)
-                const diaActual = getLocalDayOfWeek('America/Caracas')
+                const diaActual = getLocalDayOfWeek()
                 
                 // Contar ejercicios para hoy
                 const ejerciciosHoy = rutina.ejercicios?.filter((ej: any) => {

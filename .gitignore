@@ -68,9 +68,5 @@ next-env.d.ts
 # Vercel
 .vercel
 
-# Documentation (optional - descomenta si no quieres subirlos)
-# API_IMPROVEMENTS.md
-# DASHBOARD_LIMPIO_FINAL.md
-# ENTRENAMIENTO_EN_DASHBOARD.md
-# EJERCICIOS_COMPLETOS.md
-# SISTEMA_ENTRENAMIENTO_DASHBOARD.md
+
+.env.example

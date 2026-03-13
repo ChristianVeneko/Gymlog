@@ -223,11 +223,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Crear entrenamiento
+      const clientTimezone = req.headers.get('X-Timezone') || undefined
       const entrenamientoData = {
         userId: user.userId,
         rutinaId: body.rutinaId,
         fecha: body.fecha,
-        startTime: getLocalTime('America/Caracas'), // ✅ CORREGIDO: Usar hora local
+        startTime: getLocalTime(clientTimezone),
         notes: body.notes || '',
         completed: false
       }
