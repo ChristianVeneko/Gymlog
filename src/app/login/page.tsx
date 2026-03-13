@@ -37,12 +37,12 @@ export default function LoginPage() {
     setIsLoading(true)
     setError('')
 
-    const success = await login(formData.email, formData.password)
+    const result = await login(formData.email, formData.password)
     
-    if (success) {
+    if (result.success) {
       router.push('/dashboard')
     } else {
-      setError('Email o contraseña incorrectos')
+      setError(result.error || 'Email o contraseña incorrectos')
     }
     
     setIsLoading(false)

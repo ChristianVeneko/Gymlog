@@ -59,6 +59,7 @@ export default function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
@@ -69,15 +70,10 @@ export default function RegisterPage() {
       const result = await response.json()
 
       if (result.success) {
-        // Guardar tokens
-        localStorage.setItem('accessToken', result.data.tokens.accessToken)
-        localStorage.setItem('refreshToken', result.data.tokens.refreshToken)
-        localStorage.setItem('user', JSON.stringify(result.data.user))
-
-        // Redirigir al dashboard
+        // Cookies HttpOnly seteados automáticamente por el servidor
         router.push('/dashboard')
       } else {
-        setError(result.error || 'Error en el registro')
+        setError(result.details?.join(', ') || result.error || 'Error en el registro')
       }
     } catch (error) {
       setError('Error de conexión. Intenta nuevamente.')

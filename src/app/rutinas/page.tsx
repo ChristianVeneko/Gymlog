@@ -29,13 +29,8 @@ export default function RutinasPage() {
 
   const fetchRutinas = async () => {
     try {
-      const token = localStorage.getItem('accessToken')
-      if (!token) return
-
       const response = await fetch('/api/rutinas', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       })
 
       const data = await response.json()
@@ -55,12 +50,9 @@ export default function RutinasPage() {
     if (!confirm('¿Estás seguro de que quieres eliminar esta rutina?')) return
 
     try {
-      const token = localStorage.getItem('accessToken')
       const response = await fetch(`/api/rutinas/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       })
 
       const data = await response.json()
@@ -76,13 +68,10 @@ export default function RutinasPage() {
 
   const toggleActive = async (id: string, isActive: boolean) => {
     try {
-      const token = localStorage.getItem('accessToken')
       const response = await fetch(`/api/rutinas/${id}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isActive: !isActive })
       })
 

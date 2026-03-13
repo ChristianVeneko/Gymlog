@@ -66,11 +66,8 @@ export default function WorkoutDetailModal({ workoutId, onClose }: WorkoutDetail
   useEffect(() => {
     const fetchWorkoutDetail = async () => {
       try {
-        const token = localStorage.getItem('accessToken') // ✅ CORREGIDO: usar accessToken
         const response = await fetch(`/api/entrenamientos/${workoutId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include'
         })
 
         const data = await response.json()

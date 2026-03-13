@@ -16,15 +16,10 @@ export default function IAPage() {
     setLoading(true)
     setError('')
     try {
-      const token = localStorage.getItem('accessToken')
-      if (!token) return
-
       const res = await fetch('/api/ia/analyze', {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type })
       })
       const data = await res.json()

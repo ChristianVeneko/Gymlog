@@ -20,22 +20,16 @@ export default function DashboardPage() {
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken')
-      if (!token) {
-        logout()
-        return
-      }
-
       // Cargar estadísticas generales
       const statsRes = await fetch('/api/stats?type=overview', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       })
       const statsData = await statsRes.json()
       if (statsData.success) setStats(statsData.data)
 
       // Cargar entrenamientos recientes
       const workoutsRes = await fetch('/api/entrenamientos?limit=5', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       })
       const workoutsData = await workoutsRes.json()
       if (workoutsData.success) setRecentWorkouts(workoutsData.data || [])

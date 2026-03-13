@@ -14,11 +14,8 @@ export default function EntrenarPage() {
   useEffect(() => {
     const fetchRutinas = async () => {
       try {
-        const token = localStorage.getItem('accessToken')
-        if (!token) return
-
         const res = await fetch('/api/rutinas', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await res.json()
         if (data.success) {

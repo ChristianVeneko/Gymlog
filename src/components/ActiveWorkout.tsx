@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { getLocalDate, getLocalDayOfWeek, getBrowserTimezone } from '@/lib/utils/dateUtils'
+import SetInputRow from '@/components/SetInputRow'
 
 interface Exercise {
   id: string
@@ -48,14 +49,16 @@ export default function ActiveWorkout() {
   const [showRutinaSelector, setShowRutinaSelector] = useState(false)
   const [showFinishDialog, setShowFinishDialog] = useState(false)
   const [manualDuration, setManualDuration] = useState<number>(60) // duración en minutos
+  const syncInProgressRef = useRef(false) // Guard contra syncs concurrentes
+  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null) // Referencia al interval para poder limpiarlo
+  const abortControllerRef = useRef<AbortController | null>(null) // AbortController para cancelar fetches en vuelo
 
   // Cargar rutinas disponibles
   useEffect(() => {
     const fetchRutinas = async () => {
       try {
-        const token = localStorage.getItem('accessToken')
         const response = await fetch('/api/rutinas?include_ejercicios=true&active=true', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         })
         const data = await response.json()
         if (data.success) {
@@ -71,12 +74,11 @@ export default function ActiveWorkout() {
   // Cargar entrenamiento activo del día
   const loadActiveWorkout = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken')
       // ✅ CORREGIDO: Usar fecha local de Venezuela
       const today = getLocalDate()
       
       const response = await fetch(`/api/entrenamientos/active?fecha=${today}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        credentials: 'include'
       })
       
       const data = await response.json()
@@ -110,11 +112,21 @@ export default function ActiveWorkout() {
   useEffect(() => {
     if (!activeWorkout) return
 
-    const syncInterval = setInterval(async () => {
+    syncIntervalRef.current = setInterval(async () => {
       await syncSetsToServer()
     }, 10000) // 10 segundos
 
-    return () => clearInterval(syncInterval)
+    return () => {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current)
+        syncIntervalRef.current = null
+      }
+      // Abortar cualquier request en vuelo al desmontarse
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+    }
   }, [activeWorkout, localSets])
 
   // Guardar sets en localStorage inmediatamente
@@ -124,29 +136,43 @@ export default function ActiveWorkout() {
     }
   }, [localSets, activeWorkout])
 
-  // Sincronizar sets con el servidor
+  // Sincronizar sets con el servidor (protegido contra ejecución concurrente)
   const syncSetsToServer = async () => {
     if (!activeWorkout || localSets.length === 0) return
     
+    // Guard: si ya hay un sync en progreso, no iniciar otro
+    if (syncInProgressRef.current) return
+    
+    // Cancelar cualquier request previo que siga pendiente
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+    
     try {
+      syncInProgressRef.current = true
       setSyncing(true)
-      const token = localStorage.getItem('accessToken')
       
       const response = await fetch(`/api/entrenamientos/${activeWorkout.id}/sets`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ sets: localSets })
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sets: localSets }),
+        signal: controller.signal
       })
 
       if (response.ok) {
         setLastSync(new Date())
       }
     } catch (error) {
+      // Ignorar errores de abort (son intencionales)
+      if (error instanceof DOMException && error.name === 'AbortError') return
       console.error('Error syncing sets:', error)
     } finally {
+      syncInProgressRef.current = false
+      abortControllerRef.current = null
       setSyncing(false)
     }
   }
@@ -154,15 +180,12 @@ export default function ActiveWorkout() {
   // Iniciar nuevo entrenamiento con una rutina
   const startWorkout = async (rutinaId: string) => {
     try {
-      const token = localStorage.getItem('accessToken')
       // ✅ CORREGIDO: Usar fecha local de Venezuela
       const today = getLocalDate()
       
       // ✅ NUEVO: Verificar si ya existe un entrenamiento de esta rutina hoy
       const checkResponse = await fetch(`/api/entrenamientos?fecha=${today}&rutinaId=${rutinaId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       })
       
       const checkData = await checkResponse.json()
@@ -177,7 +200,7 @@ export default function ActiveWorkout() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'credentials': 'include',
           'X-Timezone': getBrowserTimezone()
         },
         body: JSON.stringify({
@@ -252,31 +275,37 @@ export default function ActiveWorkout() {
     if (!activeWorkout || finishing) return
     
     try {
-      setFinishing(true) // ✅ Mostrar loading
+      setFinishing(true)
       
-      // ⚡ OPTIMIZACIÓN: Sincronizar en paralelo si hay cambios pendientes
-      const token = localStorage.getItem('accessToken')
+      // 1. Detener el intervalo de sync automático para evitar race conditions
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current)
+        syncIntervalRef.current = null
+      }
       
-      // Sincronizar sets Y finalizar entrenamiento en paralelo
-      await Promise.all([
-        // Sincronizar sets solo si hay cambios
-        localSets.length > 0 ? syncSetsToServer() : Promise.resolve(),
-        
-        // Finalizar entrenamiento
-        fetch(`/api/entrenamientos/${activeWorkout.id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            completed: true,
-            duration: manualDuration
-          })
+      // 2. Esperar a que termine cualquier sync en progreso
+      while (syncInProgressRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+      
+      
+      // 3. Hacer el sync final de sets (secuencial, no paralelo)
+      if (localSets.length > 0) {
+        await syncSetsToServer()
+      }
+      
+      // 4. Finalizar el entrenamiento (después del sync)
+      await fetch(`/api/entrenamientos/${activeWorkout.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          completed: true,
+          duration: manualDuration
         })
-      ])
+      })
 
-      // Limpiar estado local
+      // 5. Limpiar estado local
       localStorage.removeItem(`workout_${activeWorkout.id}_sets`)
       setActiveWorkout(null)
       setLocalSets([])
@@ -284,7 +313,7 @@ export default function ActiveWorkout() {
       setShowFinishDialog(false)
       setManualDuration(60)
       
-      // ✅ NUEVO: Disparar evento para actualizar dashboard
+      // 6. Disparar evento para actualizar dashboard
       window.dispatchEvent(new CustomEvent('workoutFinished'))
       
     } catch (error) {
@@ -462,193 +491,20 @@ export default function ActiveWorkout() {
                 const isCompleted = setData?.completed || false
 
                 return (
-                  <div key={setNumber}>
-                    {/* Layout móvil: Tarjetas verticales */}
-                    <div className={`md:hidden rounded-lg p-3 ${
-                      isCompleted ? 'bg-green-100 border-2 border-green-300' : 'bg-white border-2 border-gray-200'
-                    }`}>
-                      {/* Header de la serie con botón de completado */}
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="font-bold text-gray-700 text-base">Serie #{setNumber}</span>
-                        <button
-                          onClick={() => toggleSetCompleted(exercise.id, setNumber)}
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg transition-all ${
-                            isCompleted
-                              ? 'bg-green-500 text-white shadow-md'
-                              : 'bg-gray-300 text-gray-500 hover:bg-gray-400'
-                          }`}
-                          aria-label="Marcar serie completada"
-                        >
-                          {isCompleted ? '✓' : '○'}
-                        </button>
-                      </div>
-
-                      {/* Grid de inputs */}
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Peso (kg)</label>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            value={setData?.weight ?? ''}
-                            onChange={(e) => {
-                              const value = e.target.value
-                              if (value === '') {
-                                updateSet(exercise.id, setNumber, 'weight', '')
-                              } else {
-                                const num = parseFloat(value)
-                                if (!isNaN(num) && num >= 0) {
-                                  updateSet(exercise.id, setNumber, 'weight', num)
-                                }
-                              }
-                            }}
-                            placeholder="0"
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-base font-semibold"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Repeticiones</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={setData?.reps ?? ''}
-                            onChange={(e) => {
-                              const value = e.target.value
-                              if (value === '') {
-                                updateSet(exercise.id, setNumber, 'reps', '')
-                              } else {
-                                const num = parseInt(value)
-                                if (!isNaN(num) && num >= 0) {
-                                  updateSet(exercise.id, setNumber, 'reps', num)
-                                }
-                              }
-                            }}
-                            placeholder="0"
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-base font-semibold"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Fila de notas y fallo */}
-                      <div className="flex gap-3 items-center">
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={setData?.notes || ''}
-                            onChange={(e) => updateSet(exercise.id, setNumber, 'notes', e.target.value)}
-                            placeholder="Notas opcionales..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-sm"
-                          />
-                        </div>
-                        <div className="flex items-center">
-                          <label className="inline-flex items-center cursor-pointer bg-gray-50 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={setData?.fallo || false}
-                              onChange={(e) => updateSet(exercise.id, setNumber, 'fallo', e.target.checked)}
-                              className="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-400"
-                            />
-                            <span className="ml-2 text-sm font-medium text-gray-700">Fallo</span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Layout PC: Tabla horizontal compacta */}
-                    <div className={`hidden md:grid md:grid-cols-6 gap-2 items-center p-2 rounded ${
-                      isCompleted ? 'bg-green-100 border border-green-300' : 'bg-white border border-gray-200'
-                    }`}>
-                      {/* Serie # */}
-                      <div className="text-center font-bold text-gray-700 text-sm">
-                        #{setNumber}
-                      </div>
-                      
-                      {/* Peso */}
-                      <div>
-                        <input
-                          type="number"
-                          step="0.5"
-                          min="0"
-                          value={setData?.weight ?? ''}
-                          onChange={(e) => {
-                            const value = e.target.value
-                            if (value === '') {
-                              updateSet(exercise.id, setNumber, 'weight', '')
-                            } else {
-                              const num = parseFloat(value)
-                              if (!isNaN(num) && num >= 0) {
-                                updateSet(exercise.id, setNumber, 'weight', num)
-                              }
-                            }
-                          }}
-                          placeholder="Peso"
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-sm"
-                        />
-                      </div>
-                      
-                      {/* Reps */}
-                      <div>
-                        <input
-                          type="number"
-                          min="0"
-                          value={setData?.reps ?? ''}
-                          onChange={(e) => {
-                            const value = e.target.value
-                            if (value === '') {
-                              updateSet(exercise.id, setNumber, 'reps', '')
-                            } else {
-                              const num = parseInt(value)
-                              if (!isNaN(num) && num >= 0) {
-                                updateSet(exercise.id, setNumber, 'reps', num)
-                              }
-                            }
-                          }}
-                          placeholder="Reps"
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-sm"
-                        />
-                      </div>
-                      
-                      {/* Fallo */}
-                      <div className="text-center">
-                        <label className="inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={setData?.fallo || false}
-                            onChange={(e) => updateSet(exercise.id, setNumber, 'fallo', e.target.checked)}
-                            className="w-4 h-4 text-red-600 rounded focus:ring-2 focus:ring-red-400"
-                          />
-                          <span className="ml-1 text-xs text-gray-600">Fallo</span>
-                        </label>
-                      </div>
-                      
-                      {/* Notas */}
-                      <div>
-                        <input
-                          type="text"
-                          value={setData?.notes || ''}
-                          onChange={(e) => updateSet(exercise.id, setNumber, 'notes', e.target.value)}
-                          placeholder="Notas"
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-sm"
-                        />
-                      </div>
-                      
-                      {/* Completado */}
-                      <div className="text-center">
-                        <button
-                          onClick={() => toggleSetCompleted(exercise.id, setNumber)}
-                          className={`w-7 h-7 rounded flex items-center justify-center font-bold text-sm transition-all ${
-                            isCompleted
-                              ? 'bg-green-500 text-white'
-                              : 'bg-gray-300 text-gray-500 hover:bg-gray-400'
-                          }`}
-                          aria-label="Marcar serie completada"
-                        >
-                          {isCompleted ? '✓' : '○'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <SetInputRow
+                    key={setNumber}
+                    setNumber={setNumber}
+                    weight={setData?.weight}
+                    reps={setData?.reps}
+                    notes={setData?.notes || ''}
+                    fallo={setData?.fallo || false}
+                    isCompleted={isCompleted}
+                    onWeightChange={(v) => updateSet(exercise.id, setNumber, 'weight', v)}
+                    onRepsChange={(v) => updateSet(exercise.id, setNumber, 'reps', v)}
+                    onNotesChange={(v) => updateSet(exercise.id, setNumber, 'notes', v)}
+                    onFalloChange={(v) => updateSet(exercise.id, setNumber, 'fallo', v)}
+                    onToggleCompleted={() => toggleSetCompleted(exercise.id, setNumber)}
+                  />
                 )
               })}
             </div>

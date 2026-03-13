@@ -2,18 +2,19 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
 
 export default function HomePage() {
   const router = useRouter()
+  const { isAuthenticated, loading } = useAuth()
 
   useEffect(() => {
     // Verificar si el usuario ya está autenticado
-    const token = localStorage.getItem('accessToken')
-    if (token) {
+    if (!loading && isAuthenticated) {
       router.push('/dashboard')
     }
-  }, [router])
+  }, [router, loading, isAuthenticated])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600">

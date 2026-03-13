@@ -170,11 +170,8 @@ export default function EditarRutinaPage() {
 
   const fetchRutina = async () => {
     try {
-      const token = localStorage.getItem('accessToken')
       const response = await fetch(`/api/rutinas/${rutinaId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       })
 
       const data = await response.json()
@@ -224,7 +221,6 @@ export default function EditarRutinaPage() {
     try {
       if (reset) setLoadingEjercicios(true)
       setIsFetchingMore(!reset)
-      const token = localStorage.getItem('accessToken')
       const params = new URLSearchParams({
         limit: '30',
         offset: customOffset.toString()
@@ -252,9 +248,7 @@ export default function EditarRutinaPage() {
         return
       }
       const response = await fetch(`/api/ejercicios?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       })
       const data = await response.json()
       if (data.success) {
@@ -401,16 +395,13 @@ export default function EditarRutinaPage() {
 
     try {
       setSaving(true)
-      const token = localStorage.getItem('accessToken')
       
       const allEjercicios = Object.values(rutina.ejerciciosPorDia).flat()
 
       const response = await fetch(`/api/rutinas/${rutinaId}`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: rutina.name,
           description: rutina.description,

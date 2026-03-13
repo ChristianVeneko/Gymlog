@@ -26,17 +26,14 @@ export default function TestEjerciciosPage() {
     try {
       setLoading(true)
       setError('')
-      const token = localStorage.getItem('accessToken')
       
       const url = searchTerm 
         ? `/api/ejercicios?search=${encodeURIComponent(searchTerm)}&limit=10`
         : '/api/ejercicios?limit=10'
       
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
       })
 
       const data = await response.json()

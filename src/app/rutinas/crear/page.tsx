@@ -168,7 +168,6 @@ export default function CrearRutinaPage() {
     try {
       if (reset) setLoading(true)
       setIsFetchingMore(!reset)
-      const token = localStorage.getItem('accessToken')
       const params = new URLSearchParams({
         limit: '30',
         offset: customOffset.toString()
@@ -196,9 +195,7 @@ export default function CrearRutinaPage() {
         return
       }
       const response = await fetch(`/api/ejercicios?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       })
       const data = await response.json()
       console.log('📦 Datos recibidos:', {
@@ -361,7 +358,6 @@ export default function CrearRutinaPage() {
 
     try {
       setSaving(true)
-      const token = localStorage.getItem('accessToken')
       
       // Convertir ejercicios por día a un array plano
       const allEjercicios: RutinaEjercicio[] = []
@@ -376,10 +372,8 @@ export default function CrearRutinaPage() {
       
       const response = await fetch('/api/rutinas', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: rutina.name,
           description: rutina.description,

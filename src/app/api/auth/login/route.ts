@@ -1,36 +1,36 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { verifyPassword, validateEmail } from '@/lib/auth/password'
+import { verifyPassword } from '@/lib/auth/password'
 import { createToken, createRefreshToken } from '@/lib/auth/jwt'
+import { setAuthCookies } from '@/lib/auth/cookies'
+import { loginSchema } from '@/lib/validations/schemas'
 import { eq } from 'drizzle-orm'
+import { checkRateLimit } from '@/lib/auth/rateLimit'
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
+    const rateLimitResult = checkRateLimit(request, 'login')
+    if (!rateLimitResult.allowed) {
+      return Response.json(
+        { success: false, error: `Demasiados intentos. Intenta de nuevo en ${rateLimitResult.retryAfter} segundos.` },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
-    const { email, password } = body
 
-    // Validaciones básicas
-    if (!email || !password) {
+    // Validar con Zod
+    const parsed = loginSchema.safeParse(body)
+    if (!parsed.success) {
       return Response.json(
-        {
-          success: false,
-          error: 'Email y contraseña son requeridos'
-        },
+        { success: false, error: parsed.error.issues[0]?.message || 'Datos inválidos' },
         { status: 400 }
       )
     }
 
-    // Validar formato de email
-    if (!validateEmail(email)) {
-      return Response.json(
-        {
-          success: false,
-          error: 'Formato de email inválido'
-        },
-        { status: 400 }
-      )
-    }
+    const { email, password } = parsed.data
 
     // Buscar el usuario
     const userResult = await db
@@ -41,10 +41,7 @@ export async function POST(request: NextRequest) {
 
     if (userResult.length === 0) {
       return Response.json(
-        {
-          success: false,
-          error: 'Credenciales inválidas'
-        },
+        { success: false, error: 'Credenciales inválidas' },
         { status: 401 }
       )
     }
@@ -56,10 +53,7 @@ export async function POST(request: NextRequest) {
     
     if (!isPasswordValid) {
       return Response.json(
-        {
-          success: false,
-          error: 'Credenciales inválidas'
-        },
+        { success: false, error: 'Credenciales inválidas' },
         { status: 401 }
       )
     }
@@ -74,7 +68,8 @@ export async function POST(request: NextRequest) {
     const accessToken = await createToken(tokenPayload)
     const refreshToken = await createRefreshToken(tokenPayload)
 
-    return Response.json(
+    // Crear respuesta con datos del usuario (sin tokens en el body)
+    const jsonResponse = Response.json(
       {
         success: true,
         message: 'Inicio de sesión exitoso',
@@ -85,24 +80,19 @@ export async function POST(request: NextRequest) {
             email: user.email,
             avatar: user.avatar,
             createdAt: user.createdAt
-          },
-          tokens: {
-            accessToken,
-            refreshToken
           }
         }
       },
       { status: 200 }
     )
 
+    // Setear tokens como HttpOnly cookies
+    return setAuthCookies(jsonResponse, accessToken, refreshToken)
+
   } catch (error) {
     console.error('Error en login:', error)
     return Response.json(
-      {
-        success: false,
-        error: 'Error interno del servidor',
-        message: 'No se pudo completar el inicio de sesión'
-      },
+      { success: false, error: 'Error interno del servidor' },
       { status: 500 }
     )
   }

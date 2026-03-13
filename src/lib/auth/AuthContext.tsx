@@ -13,7 +13,8 @@ interface User {
 interface AuthContextType {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string; details?: string[] }>
   logout: () => void
   isAuthenticated: boolean
 }
@@ -27,68 +28,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAuthenticated = !!user
 
-  // Verificar token al cargar la aplicación y refrescar si es necesario
+  // Verificar sesión al cargar — cookies se envían automáticamente
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('accessToken')
-        const refreshToken = localStorage.getItem('refreshToken')
-        if (!token && !refreshToken) {
+        // Intentar obtener perfil (cookie se envía automáticamente)
+        const response = await fetch('/api/auth/profile', {
+          credentials: 'include'
+        })
+        const result = await response.json()
+
+        if (result.success && result.data?.user) {
+          setUser(result.data.user)
           setLoading(false)
           return
         }
 
-        // Intentar con accessToken primero
-        if (token) {
-          const response = await fetch('/api/auth/profile', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+        // Si falló, intentar refresh (cookie de refresh se envía automáticamente)
+        const refreshRes = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include'
+        })
+        const refreshData = await refreshRes.json()
+
+        if (refreshData.success) {
+          // Nuevas cookies ya fueron seteadas, intentar obtener perfil de nuevo
+          const profileRes = await fetch('/api/auth/profile', {
+            credentials: 'include'
           })
-          const result = await response.json()
-          if (result.success && result.data?.user) {
-            setUser(result.data.user)
+          const profileData = await profileRes.json()
+          if (profileData.success && profileData.data?.user) {
+            setUser(profileData.data.user)
             setLoading(false)
             return
           }
         }
 
-        // Si accessToken falló pero hay refreshToken, intentar refrescar
-        if (refreshToken) {
-          const refreshRes = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken })
-          })
-          const refreshData = await refreshRes.json()
-          if (refreshData.success && refreshData.data?.tokens?.accessToken) {
-            localStorage.setItem('accessToken', refreshData.data.tokens.accessToken)
-            localStorage.setItem('refreshToken', refreshData.data.tokens.refreshToken)
-            // Volver a intentar obtener el perfil
-            const profileRes = await fetch('/api/auth/profile', {
-              headers: {
-                'Authorization': `Bearer ${refreshData.data.tokens.accessToken}`
-              }
-            })
-            const profileData = await profileRes.json()
-            if (profileData.success && profileData.data?.user) {
-              setUser(profileData.data.user)
-              setLoading(false)
-              return
-            }
-          }
-        }
-
-        // Si todo falla, limpiar y forzar logout
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
+        // Si todo falla, no hay sesión
         setUser(null)
       } catch (error) {
         console.error('Error verificando autenticación:', error)
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('user')
         setUser(null)
       } finally {
         setLoading(false)
@@ -97,38 +76,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth()
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password })
       })
 
       const result = await response.json()
 
       if (result.success) {
-        // Guardar tokens
-        localStorage.setItem('accessToken', result.data.tokens.accessToken)
-        localStorage.setItem('refreshToken', result.data.tokens.refreshToken)
-        localStorage.setItem('user', JSON.stringify(result.data.user))
-        
         setUser(result.data.user)
-        return true
+        return { success: true }
       } else {
-        console.error('Error en login:', result.error)
-        return false
+        return { success: false, error: result.error }
       }
     } catch (error) {
       console.error('Error en login:', error)
-      return false
+      return { success: false, error: 'Error de conexión' }
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
+  const register = async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string; details?: string[] }> => {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name, email, password })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setUser(result.data.user)
+        return { success: true }
+      } else {
+        return { success: false, error: result.error, details: result.details }
+      }
+    } catch (error) {
+      console.error('Error en registro:', error)
+      return { success: false, error: 'Error de conexión' }
+    }
+  }
+
+  const logout = async () => {
+    try {
+      // Llamar al endpoint de logout para limpiar cookies HttpOnly
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      })
+    } catch (error) {
+      console.error('Error en logout:', error)
+    }
     setUser(null)
     router.push('/login')
   }
@@ -137,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     loading,
     login,
+    register,
     logout,
     isAuthenticated
   }

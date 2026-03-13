@@ -231,19 +231,16 @@ export default function ProgresoPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem('accessToken')
-        if (!token) return
-
         // Cargar estadísticas
         const statsRes = await fetch('/api/stats?type=detailed', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         })
         const statsData = await statsRes.json()
         if (statsData.success) setStats(statsData.data)
 
         // Cargar historial de entrenamientos
         const entrenamientosRes = await fetch('/api/entrenamientos?limit=20', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         })
         const entrenamientosData = await entrenamientosRes.json()
         if (entrenamientosData.success) {
@@ -252,7 +249,7 @@ export default function ProgresoPage() {
 
         // Cargar todos los días entrenados para el calendario (últimos 6 meses)
         const allEntrenamientosRes = await fetch('/api/entrenamientos?limit=1000&completed=true', {
-          headers: { 'Authorization': `Bearer ${token}` }
+          credentials: 'include'
         })
         const allEntrenamientosData = await allEntrenamientosRes.json()
         if (allEntrenamientosData.success) {

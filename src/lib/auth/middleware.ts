@@ -1,12 +1,14 @@
 import { NextRequest } from 'next/server'
 import { verifyToken, getTokenFromHeader, JWTPayload } from './jwt'
+import { getAccessTokenFromCookies } from './cookies'
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: JWTPayload
 }
 
 /**
- * Middleware para verificar autenticación JWT
+ * Middleware para verificar autenticación JWT.
+ * Busca el token primero en cookies HttpOnly, luego en Authorization header (fallback).
  */
 export async function authenticateRequest(request: NextRequest): Promise<{
   isAuthenticated: boolean
@@ -14,8 +16,14 @@ export async function authenticateRequest(request: NextRequest): Promise<{
   error?: string
 }> {
   try {
-    const authHeader = request.headers.get('Authorization')
-    const token = getTokenFromHeader(authHeader || '')
+    // 1. Intentar leer de cookie HttpOnly (preferido, seguro)
+    let token = getAccessTokenFromCookies(request)
+
+    // 2. Fallback: Authorization header (para compatibilidad o API testing)
+    if (!token) {
+      const authHeader = request.headers.get('Authorization')
+      token = getTokenFromHeader(authHeader || '')
+    }
     
     if (!token) {
       return {

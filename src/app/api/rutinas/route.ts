@@ -46,114 +46,124 @@ export async function GET(request: NextRequest) {
         whereConditions = and(whereConditions, eq(rutinas.isActive, false)) as any
       }
 
+      // 1. Obtener todas las rutinas del usuario (1 sola query)
       const userRutinas = await db
         .select()
         .from(rutinas)
         .where(whereConditions)
         .orderBy(rutinas.createdAt)
 
-      if (!includeEjercicios) {
-        // Obtener conteo total de ejercicios y suma de sets para cada rutina
-        const rutinasWithCount = await Promise.all(
-          userRutinas.map(async (rutina) => {
-            // Contar TODOS los ejercicios y sumar sets
-            const statsResult = await db
-              .select({ 
-                count: sql<number>`COUNT(*)`,
-                totalSets: sql<number>`COALESCE(SUM(${rutinaEjercicios.sets}), 0)`
-              })
-              .from(rutinaEjercicios)
-              .where(eq(rutinaEjercicios.rutinaId, rutina.id))
-            
-            return {
-              ...rutina,
-              daysOfWeek: rutina.daysOfWeek ? JSON.parse(rutina.daysOfWeek) : [],
-              ejercicios_count: Number(statsResult[0]?.count || 0),
-              total_sets: Number(statsResult[0]?.totalSets || 0)
-            }
-          })
-        )
-        
-        return Response.json({ 
-          success: true, 
-          data: rutinasWithCount 
-        })
+      if (userRutinas.length === 0) {
+        return Response.json({ success: true, data: [] })
       }
 
-      // Obtener ejercicios para cada rutina
-      const rutinasWithEjercicios = await Promise.all(
-        userRutinas.map(async (rutina) => {
-          const rutinasEjercicios = await db
-            .select({
-              id: rutinaEjercicios.id,
-              ejercicioId: rutinaEjercicios.ejercicioId,
-              dayOfWeek: rutinaEjercicios.dayOfWeek, // ✅ AGREGADO
-              sets: rutinaEjercicios.sets,
-              reps: rutinaEjercicios.reps,
-              weight: rutinaEjercicios.weight,
-              restTime: rutinaEjercicios.restTime,
-              order: rutinaEjercicios.order,
-              notes: rutinaEjercicios.notes,
-              ejercicio: {
-                id: ejercicios.id,
-                name: ejercicios.name,
-                nameEs: ejercicios.nameEs,
-                bodyPart: ejercicios.bodyPart,
-                equipment: ejercicios.equipment,
-                target: ejercicios.target,
-                gifUrl: ejercicios.gifUrl
-              },
-              // Fallback data from rutinaEjercicios in case ejercicios table is missing data
-              fallbackName: rutinaEjercicios.ejercicioName,
-              fallbackNameEs: rutinaEjercicios.ejercicioNameEs,
-              fallbackBodyPart: rutinaEjercicios.bodyPart,
-              fallbackEquipment: rutinaEjercicios.equipment,
-              fallbackTarget: rutinaEjercicios.target,
-              fallbackGifUrl: rutinaEjercicios.gifUrl
-            })
-            .from(rutinaEjercicios)
-            .leftJoin(ejercicios, eq(rutinaEjercicios.ejercicioId, ejercicios.id))
-            .where(eq(rutinaEjercicios.rutinaId, rutina.id))
-            .orderBy(rutinaEjercicios.order)
+      // Extraer IDs de rutinas para la query batch
+      const rutinaIds = userRutinas.map(r => r.id)
 
-          // Fix null ejercicio data by using fallback data
-          const processedEjercicios = rutinasEjercicios.map(item => {
-            const bodyPart = item.ejercicio?.bodyPart || item.fallbackBodyPart || 'N/A'
-            return {
-              id: item.id,
-              ejercicioId: item.ejercicioId,
-              dayOfWeek: item.dayOfWeek, // ✅ AGREGADO
-              bodyPart, // ✅ AGREGADO para fácil acceso
-              sets: item.sets,
-              reps: item.reps,
-              weight: item.weight,
-              restTime: item.restTime,
-              order: item.order,
-              notes: item.notes,
-              ejercicio: {
-                id: item.ejercicio?.id || item.ejercicioId,
-                name: item.ejercicio?.name || item.fallbackName || 'Ejercicio desconocido',
-                nameEs: item.ejercicio?.nameEs || item.fallbackNameEs || item.ejercicio?.name || item.fallbackName || 'Ejercicio desconocido',
-                bodyPart,
-                equipment: item.ejercicio?.equipment || item.fallbackEquipment || 'N/A',
-                target: item.ejercicio?.target || item.fallbackTarget || 'N/A',
-                gifUrl: item.ejercicio?.gifUrl || item.fallbackGifUrl || ''
-              }
-            }
+      if (!includeEjercicios) {
+        // ✅ OPTIMIZADO: Una sola query con GROUP BY en vez de N queries individuales
+        const statsResult = await db
+          .select({
+            rutinaId: rutinaEjercicios.rutinaId,
+            count: sql<number>`COUNT(*)`,
+            totalSets: sql<number>`COALESCE(SUM(${rutinaEjercicios.sets}), 0)`
           })
+          .from(rutinaEjercicios)
+          .where(sql`${rutinaEjercicios.rutinaId} IN (${sql.join(rutinaIds.map(id => sql`${id}`), sql`, `)})`)
+          .groupBy(rutinaEjercicios.rutinaId)
 
+        // Crear mapa de stats por rutinaId
+        const statsMap = new Map(statsResult.map(s => [s.rutinaId, s]))
+
+        const rutinasWithCount = userRutinas.map(rutina => ({
+          ...rutina,
+          daysOfWeek: rutina.daysOfWeek ? JSON.parse(rutina.daysOfWeek) : [],
+          ejercicios_count: Number(statsMap.get(rutina.id)?.count || 0),
+          total_sets: Number(statsMap.get(rutina.id)?.totalSets || 0)
+        }))
+        
+        return Response.json({ success: true, data: rutinasWithCount })
+      }
+
+      // ✅ OPTIMIZADO: Una sola query JOIN para TODOS los ejercicios de todas las rutinas
+      const allEjercicios = await db
+        .select({
+          id: rutinaEjercicios.id,
+          rutinaId: rutinaEjercicios.rutinaId,
+          ejercicioId: rutinaEjercicios.ejercicioId,
+          dayOfWeek: rutinaEjercicios.dayOfWeek,
+          sets: rutinaEjercicios.sets,
+          reps: rutinaEjercicios.reps,
+          weight: rutinaEjercicios.weight,
+          restTime: rutinaEjercicios.restTime,
+          order: rutinaEjercicios.order,
+          notes: rutinaEjercicios.notes,
+          ejercicio: {
+            id: ejercicios.id,
+            name: ejercicios.name,
+            nameEs: ejercicios.nameEs,
+            bodyPart: ejercicios.bodyPart,
+            equipment: ejercicios.equipment,
+            target: ejercicios.target,
+            gifUrl: ejercicios.gifUrl
+          },
+          fallbackName: rutinaEjercicios.ejercicioName,
+          fallbackNameEs: rutinaEjercicios.ejercicioNameEs,
+          fallbackBodyPart: rutinaEjercicios.bodyPart,
+          fallbackEquipment: rutinaEjercicios.equipment,
+          fallbackTarget: rutinaEjercicios.target,
+          fallbackGifUrl: rutinaEjercicios.gifUrl
+        })
+        .from(rutinaEjercicios)
+        .leftJoin(ejercicios, eq(rutinaEjercicios.ejercicioId, ejercicios.id))
+        .where(sql`${rutinaEjercicios.rutinaId} IN (${sql.join(rutinaIds.map(id => sql`${id}`), sql`, `)})`)
+        .orderBy(rutinaEjercicios.order)
+
+      // Agrupar ejercicios por rutinaId en memoria
+      const ejerciciosByRutina = new Map<string, typeof allEjercicios>()
+      for (const ej of allEjercicios) {
+        const list = ejerciciosByRutina.get(ej.rutinaId) || []
+        list.push(ej)
+        ejerciciosByRutina.set(ej.rutinaId, list)
+      }
+
+      // Construir resultado final
+      const rutinasWithEjercicios = userRutinas.map(rutina => {
+        const rutinasEjercicios = ejerciciosByRutina.get(rutina.id) || []
+
+        const processedEjercicios = rutinasEjercicios.map(item => {
+          const bodyPart = item.ejercicio?.bodyPart || item.fallbackBodyPart || 'N/A'
           return {
-            ...rutina,
-            daysOfWeek: rutina.daysOfWeek ? JSON.parse(rutina.daysOfWeek) : [],
-            ejercicios: processedEjercicios
+            id: item.id,
+            ejercicioId: item.ejercicioId,
+            dayOfWeek: item.dayOfWeek,
+            bodyPart,
+            sets: item.sets,
+            reps: item.reps,
+            weight: item.weight,
+            restTime: item.restTime,
+            order: item.order,
+            notes: item.notes,
+            ejercicio: {
+              id: item.ejercicio?.id || item.ejercicioId,
+              name: item.ejercicio?.name || item.fallbackName || 'Ejercicio desconocido',
+              nameEs: item.ejercicio?.nameEs || item.fallbackNameEs || item.ejercicio?.name || item.fallbackName || 'Ejercicio desconocido',
+              bodyPart,
+              equipment: item.ejercicio?.equipment || item.fallbackEquipment || 'N/A',
+              target: item.ejercicio?.target || item.fallbackTarget || 'N/A',
+              gifUrl: item.ejercicio?.gifUrl || item.fallbackGifUrl || ''
+            }
           }
         })
-      )
 
-      return Response.json({ 
-        success: true, 
-        data: rutinasWithEjercicios 
+        return {
+          ...rutina,
+          daysOfWeek: rutina.daysOfWeek ? JSON.parse(rutina.daysOfWeek) : [],
+          ejercicios: processedEjercicios
+        }
       })
+
+      return Response.json({ success: true, data: rutinasWithEjercicios })
 
     } catch (error) {
       console.error('Error fetching rutinas:', error)
@@ -286,6 +296,13 @@ export async function PUT(request: NextRequest) {
         const ejerciciosData = updateData.ejercicios.map((ejercicio: RutinaEjercicio, index: number) => ({
           rutinaId: id,
           ejercicioId: ejercicio.ejercicioId,
+          ejercicioName: ejercicio.ejercicioName,
+          ejercicioNameEs: ejercicio.ejercicioNameEs || ejercicio.ejercicioName,
+          bodyPart: ejercicio.bodyPart || '',
+          equipment: ejercicio.equipment || '',
+          target: ejercicio.target || '',
+          gifUrl: ejercicio.gifUrl || '',
+          dayOfWeek: ejercicio.dayOfWeek,
           sets: ejercicio.sets,
           reps: ejercicio.reps,
           weight: ejercicio.weight || null,

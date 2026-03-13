@@ -135,16 +135,8 @@ export default function EntrenarPage() {
 
   const fetchRutina = async () => {
     try {
-      const token = localStorage.getItem('accessToken')
-      if (!token) {
-        router.push('/login')
-        return
-      }
-
       const response = await fetch(`/api/rutinas?include_ejercicios=true`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       })
 
       const data = await response.json()
@@ -169,15 +161,12 @@ export default function EntrenarPage() {
 
   const initializeEntrenamiento = async (rutina: Rutina) => {
     try {
-      const token = localStorage.getItem('accessToken')
       
       // Crear entrenamiento en la base de datos
       const response = await fetch('/api/entrenamientos', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rutinaId: rutina.id,
           fecha: new Date().toISOString().split('T')[0],
@@ -235,15 +224,11 @@ export default function EntrenarPage() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      
       // Guardar set en la base de datos
       const response = await fetch('/api/sets', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           entrenamientoId,
           ejercicioId: ejercicio.ejercicioId,
@@ -322,14 +307,10 @@ export default function EntrenarPage() {
     if (!entrenamientoId) return
 
     try {
-      const token = localStorage.getItem('token')
-      
       const response = await fetch('/api/entrenamientos', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: entrenamientoId,
           completed: true,
