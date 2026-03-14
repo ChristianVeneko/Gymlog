@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { formatDateString } from '@/lib/utils/dateUtils'
+import ExerciseImage from '@/components/ExerciseImage'
 
 interface WorkoutSet {
   id: string
@@ -157,10 +158,10 @@ export default function WorkoutDetailModal({ workoutId, onClose }: WorkoutDetail
                 <div className="bg-gray-50 p-4 border-b border-gray-200">
                   <div className="flex items-start gap-4">
                     {ejercicio.gifUrl && (
-                      <img 
+                      <ExerciseImage 
                         src={ejercicio.gifUrl} 
                         alt={ejercicio.ejercicioName}
-                        className="w-20 h-20 rounded object-cover"
+                        size="md"
                       />
                     )}
                     <div className="flex-1">

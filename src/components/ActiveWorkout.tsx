@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth/AuthContext'
 import { getLocalDate, getLocalDayOfWeek, getBrowserTimezone } from '@/lib/utils/dateUtils'
 import SetInputRow from '@/components/SetInputRow'
 import Icon from '@/components/Icon'
+import ExerciseImage from '@/components/ExerciseImage'
 
 interface Exercise {
   id: string
@@ -488,14 +489,7 @@ export default function ActiveWorkout() {
             {/* Header del ejercicio */}
             <div className="flex items-center mb-3 pb-3 border-b border-gray-200">
               {exercise.gifUrl && (
-                <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-200 mr-3 flex-shrink-0">
-                  <img
-                    src={exercise.gifUrl}
-                    alt={exercise.name}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
+                <ExerciseImage src={exercise.gifUrl} alt={exercise.name} size="sm" className="mr-3 flex-shrink-0" />
               )}
               <div className="flex-1">
                 <h3 className="font-bold text-gray-900">{exercise.name}</h3>

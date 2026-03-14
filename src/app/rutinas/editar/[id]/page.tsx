@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
 import { MagnifyingGlassIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon, LightBulbIcon } from '@heroicons/react/24/outline'
 import Icon from '@/components/Icon'
+import ExerciseImage from '@/components/ExerciseImage'
 
 interface Ejercicio {
   id: string
@@ -424,7 +425,7 @@ export default function EditarRutinaPage() {
                           <div className="flex items-start justify-between">
                             <div className="flex items-start space-x-3">
                               {ejercicio.gifUrl && (
-                                <img src={ejercicio.gifUrl} alt={ejercicio.ejercicioName} className="w-16 h-16 rounded object-cover" />
+                                <ExerciseImage src={ejercicio.gifUrl} alt={ejercicio.ejercicioName} size="sm" />
                               )}
                               <div>
                                 <div className="flex items-center space-x-2 mb-1">
@@ -549,7 +550,7 @@ export default function EditarRutinaPage() {
                         >
                           <div className="flex items-start space-x-3">
                             {ejercicio.gifUrl && (
-                              <img src={ejercicio.gifUrl} alt={ejercicio.name} className="w-20 h-20 rounded object-cover" loading="lazy" />
+                              <ExerciseImage src={ejercicio.gifUrl} alt={ejercicio.name} size="md" />
                             )}
                             <div className="flex-1 min-w-0">
                               <h3 className="font-medium text-gray-900 truncate">{ejercicio.name}</h3>

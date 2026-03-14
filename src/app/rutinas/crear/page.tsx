@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
 import { MagnifyingGlassIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon, LightBulbIcon } from '@heroicons/react/24/outline'
 import Icon from '@/components/Icon'
+import ExerciseImage from '@/components/ExerciseImage'
 
 interface Ejercicio {
   id: string
@@ -414,7 +415,7 @@ export default function CrearRutinaPage() {
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-start space-x-3">
                               {ejercicio.gifUrl && (
-                                <img src={ejercicio.gifUrl} alt={ejercicio.ejercicioName} className="w-16 h-16 rounded object-cover" />
+                                <ExerciseImage src={ejercicio.gifUrl} alt={ejercicio.ejercicioName} size="sm" />
                               )}
                               <div>
                                 <div className="flex items-center space-x-2 mb-1">
@@ -551,9 +552,7 @@ export default function CrearRutinaPage() {
                       >
                         <div className="flex items-center space-x-3">
                           {ejercicio.gifUrl && (
-                            <div className="w-16 h-16 rounded overflow-hidden bg-gray-100 flex-shrink-0">
-                              <img src={ejercicio.gifUrl} alt={ejercicio.name} className="w-full h-full object-cover" loading="lazy" />
-                            </div>
+                            <ExerciseImage src={ejercicio.gifUrl} alt={ejercicio.name} size="sm" />
                           )}
                           <div>
                             <h4 className="font-medium text-gray-900">{ejercicio.name}</h4>
@@ -602,7 +601,7 @@ export default function CrearRutinaPage() {
             <div className="mb-4">
               <div className="flex items-center space-x-3 mb-4">
                 {selectedEjercicio.gifUrl && (
-                  <img src={selectedEjercicio.gifUrl} alt={selectedEjercicio.name} className="w-16 h-16 rounded object-cover" />
+                  <ExerciseImage src={selectedEjercicio.gifUrl} alt={selectedEjercicio.name} size="sm" />
                 )}
                 <div>
                   <h4 className="font-medium text-gray-900">{selectedEjercicio.name}</h4>
