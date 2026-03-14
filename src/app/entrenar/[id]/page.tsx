@@ -75,6 +75,7 @@ export default function EntrenarPage() {
   const [error, setError] = useState('')
   const [showRPEModal, setShowRPEModal] = useState(false)
   const [currentRPE, setCurrentRPE] = useState(5)
+  const [lastSetsData, setLastSetsData] = useState<Record<string, any[]>>({}) // ✅ Datos de última vez
   
   const restTimerRef = useRef<NodeJS.Timeout | null>(null)
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -146,6 +147,7 @@ export default function EntrenarPage() {
         if (targetRutina) {
           setRutina(targetRutina)
           initializeEntrenamiento(targetRutina)
+          loadLastSets(targetRutina.ejercicios)
         } else {
           setError('Rutina no encontrada')
         }
@@ -159,7 +161,22 @@ export default function EntrenarPage() {
     }
   }
 
-  const initializeEntrenamiento = async (rutina: Rutina) => {
+  // Cargar estadísticas de la "última vez" para estos ejercicios
+  const loadLastSets = async (exercises: RutinaEjercicio[]) => {
+    if (!exercises || exercises.length === 0) return
+    const ids = exercises.map(e => e.ejercicioId).join(',')
+    try {
+      const res = await fetch(`/api/stats?type=last_sets&ejercicio_ids=${ids}`)
+      const json = await res.json()
+      if (json.success && json.data) {
+        setLastSetsData(json.data)
+      }
+    } catch (e) {
+      console.error('Error fetching last sets:', e)
+    }
+  }
+
+  const initializeEntrenamiento = async (rutinaData: Rutina) => {
     try {
       
       // Crear entrenamiento en la base de datos
@@ -168,7 +185,7 @@ export default function EntrenarPage() {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          rutinaId: rutina.id,
+          rutinaId: rutinaData.id,
           fecha: new Date().toISOString().split('T')[0],
           notes: ''
         })
@@ -181,7 +198,7 @@ export default function EntrenarPage() {
         
         // Inicializar estado del entrenamiento
         const sets: Record<string, Set[]> = {}
-        rutina.ejercicios.forEach(ejercicio => {
+        rutinaData.ejercicios.forEach(ejercicio => {
           sets[ejercicio.ejercicioId] = Array.from({ length: ejercicio.sets }, (_, i) => ({
             setNumber: i + 1,
             reps: undefined,
@@ -386,6 +403,9 @@ export default function EntrenarPage() {
   }
 
   const currentSetInfo = getCurrentSet()
+  const lastSet = currentSetInfo ? lastSetsData[currentSetInfo.exercise.ejercicioId]?.find(
+    (s: any) => s.setNumber === (currentSetInfo.setIndex + 1)
+  ) : null
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
@@ -531,6 +551,8 @@ export default function EntrenarPage() {
             {/* Formulario del set */}
             <SetForm
               currentSet={currentSetInfo}
+              lastWeight={lastSet?.weight}
+              lastReps={lastSet?.reps}
               onComplete={(setData) => completeSet(
                 currentSetInfo.exerciseIndex,
                 currentSetInfo.setIndex,
@@ -601,11 +623,13 @@ interface SetFormProps {
     exerciseIndex: number
     setIndex: number
   }
+  lastWeight?: number
+  lastReps?: number
   onComplete: (setData: Partial<Set>) => void
   onShowRPE: () => void
 }
 
-function SetForm({ currentSet, onComplete, onShowRPE }: SetFormProps) {
+function SetForm({ currentSet, lastWeight, lastReps, onComplete, onShowRPE }: SetFormProps) {
   const [reps, setReps] = useState<number>(parseInt(currentSet.exercise.reps) || 0)
   const [weight, setWeight] = useState<number>(currentSet.set.weight || currentSet.exercise.weight || 0)
   const [notes, setNotes] = useState<string>('')
@@ -621,7 +645,14 @@ function SetForm({ currentSet, onComplete, onShowRPE }: SetFormProps) {
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 space-y-4">
-      <h3 className="text-lg font-bold text-center">Registrar Set</h3>
+      <div className="text-center mb-2">
+        <h3 className="text-lg font-bold">Registrar Set</h3>
+        {(lastWeight !== undefined || lastReps !== undefined) && (
+          <p className="text-sm text-gray-400 italic">
+            Última vez: {lastWeight || '--'}kg × {lastReps || '--'}
+          </p>
+        )}
+      </div>
       
       <div className="grid grid-cols-2 gap-4">
         <div>

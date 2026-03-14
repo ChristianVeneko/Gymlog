@@ -12,6 +12,8 @@ interface SetInputRowProps {
   onNotesChange: (value: string) => void
   onFalloChange: (checked: boolean) => void
   onToggleCompleted: () => void
+  lastWeight?: number
+  lastReps?: number
 }
 
 /**
@@ -29,7 +31,9 @@ export default function SetInputRow({
   onRepsChange,
   onNotesChange,
   onFalloChange,
-  onToggleCompleted
+  onToggleCompleted,
+  lastWeight,
+  lastReps
 }: SetInputRowProps) {
   const handleWeightInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -103,6 +107,13 @@ export default function SetInputRow({
             />
           </div>
         </div>
+        
+        {/* Hint de la última vez */}
+        {(lastWeight !== undefined || lastReps !== undefined) && (
+          <div className="text-xs text-gray-500 mb-3 text-center italic bg-gray-50 rounded py-1">
+            Última vez: {lastWeight || '--'}kg × {lastReps || '--'}
+          </div>
+        )}
 
         {/* Fila de notas y fallo */}
         <div className="flex gap-3 items-center">
@@ -163,8 +174,14 @@ export default function SetInputRow({
           />
         </div>
         
-        {/* Fallo */}
-        <div className="text-center">
+        {/* Hint (PC) - lo mostramos junto al fallo o notas */}
+        {/* Hint & Fallo */}
+        <div className="flex flex-col items-center justify-center space-y-1">
+          {(lastWeight !== undefined || lastReps !== undefined) && (
+            <span className="text-[10px] text-gray-500 italic whitespace-nowrap">
+              Últ.{lastWeight||'-'}kg×{lastReps||'-'}
+            </span>
+          )}
           <label className="inline-flex items-center cursor-pointer">
             <input
               type="checkbox"

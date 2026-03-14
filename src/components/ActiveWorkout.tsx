@@ -43,7 +43,8 @@ export default function ActiveWorkout() {
   const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null)
   const [localSets, setLocalSets] = useState<SetData[]>([])
   const [syncing, setSyncing] = useState(false)
-  const [finishing, setFinishing] = useState(false) // ✅ NUEVO: Estado de finalización
+  const [finishing, setFinishing] = useState(false)
+  const [lastSetsData, setLastSetsData] = useState<Record<string, any[]>>({}) // ✅ NUEVO: datos de última vez
   const [lastSync, setLastSync] = useState<Date | null>(null)
   const [rutinas, setRutinas] = useState<any[]>([])
   const [selectedRutinaId, setSelectedRutinaId] = useState<string>('')
@@ -94,6 +95,9 @@ export default function ActiveWorkout() {
         } else {
           setLocalSets(data.data.sets || [])
         }
+        
+        // ✅ Cargar pesos de la última vez para los ejercicios del entrenamiento
+        loadLastSets(data.data.exercises)
       } else {
         setActiveWorkout(null)
         setShowRutinaSelector(true)
@@ -104,6 +108,21 @@ export default function ActiveWorkout() {
       setLoading(false)
     }
   }, [])
+
+  // Cargar estadísticas de la "última vez" para estos ejercicios
+  const loadLastSets = async (exercises: Exercise[]) => {
+    if (!exercises || exercises.length === 0) return
+    const ids = exercises.map(e => e.id).join(',')
+    try {
+      const res = await fetch(`/api/stats?type=last_sets&ejercicio_ids=${ids}`)
+      const json = await res.json()
+      if (json.success && json.data) {
+        setLastSetsData(json.data)
+      }
+    } catch (e) {
+      console.error('Error fetching last sets:', e)
+    }
+  }
 
   useEffect(() => {
     loadActiveWorkout()
@@ -490,6 +509,7 @@ export default function ActiveWorkout() {
                 const setNumber = i + 1
                 const setData = getSetData(exercise.id, setNumber)
                 const isCompleted = setData?.completed || false
+                const lastSet = lastSetsData[exercise.id]?.find(s => s.setNumber === setNumber)
 
                 return (
                   <SetInputRow
@@ -497,6 +517,8 @@ export default function ActiveWorkout() {
                     setNumber={setNumber}
                     weight={setData?.weight}
                     reps={setData?.reps}
+                    lastWeight={lastSet?.weight}
+                    lastReps={lastSet?.reps}
                     notes={setData?.notes || ''}
                     fallo={setData?.fallo || false}
                     isCompleted={isCompleted}

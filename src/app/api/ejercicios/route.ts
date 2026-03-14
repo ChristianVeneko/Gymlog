@@ -1,9 +1,13 @@
 import { NextRequest } from 'next/server'
 import { withAuth } from '@/lib/auth/middleware'
 
-// Cache para ejercicios
+// Cache para ejercicios paginados
 const exerciseCache = new Map()
 const CACHE_DURATION = 1000 * 60 * 60 // 1 hora
+
+// Cache para TODOS los ejercicios de un bodyPart, evita múltiples loops
+const bodyPartCache = new Map<string, { data: ExerciseDBExercise[], timestamp: number }>()
+const BODYPART_CACHE_DURATION = 1000 * 60 * 60 * 24 // 24 horas
 
 interface ExerciseDBExercise {
   exerciseId: string
@@ -55,6 +59,45 @@ function capitalize(str: string): string {
 }
 
 /**
+ * Obtiene tódos los ejercicios de una categoría (bodyPart) iterando la paginación de la API.
+ */
+async function fetchAllForBodyPart(bodyPart: string): Promise<ExerciseDBExercise[]> {
+  const cached = bodyPartCache.get(bodyPart)
+  if (cached && (Date.now() - cached.timestamp) < BODYPART_CACHE_DURATION) {
+    return cached.data
+  }
+
+  const baseUrl = 'https://www.exercisedb.dev'
+  let allData: ExerciseDBExercise[] = []
+  let currentOffset = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const params = new URLSearchParams({ limit: '100', offset: currentOffset.toString() })
+    const url = `${baseUrl}/api/v1/bodyparts/${encodeURIComponent(bodyPart)}/exercises?${params.toString()}`
+
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'GymLog-App/1.0' }
+    })
+
+    if (!response.ok) break
+    const data: ExerciseDBResponse = await response.json()
+    if (data.success && data.data && data.data.length > 0) {
+      allData = allData.concat(data.data)
+      if (data.data.length < 100) hasMore = false
+      else currentOffset += 100
+    } else {
+      hasMore = false
+    }
+  }
+
+  if (allData.length > 0) {
+    bodyPartCache.set(bodyPart, { data: allData, timestamp: Date.now() })
+  }
+  return allData
+}
+
+/**
  * Obtiene ejercicios de la API oficial de ExerciseDB
  */
 async function fetchExercisesFromAPI(
@@ -71,30 +114,21 @@ async function fetchExercisesFromAPI(
     let response: Response
 
     if (bodyPart && search) {
-      // Buscar dentro de un bodyPart: primero traer los del bodyPart, luego filtrar por nombre
-      const params = new URLSearchParams({
-        limit: safeLimit.toString(),
-        offset: offset.toString()
-      })
-      url = `${baseUrl}/api/v1/bodyparts/${encodeURIComponent(bodyPart)}/exercises?${params.toString()}`
-
-      response = await fetch(url, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'GymLog-App/1.0' }
-      })
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const data: ExerciseDBResponse = await response.json()
-      if (!data.success || !data.data) throw new Error('Invalid API response')
+      // Buscar dentro de un bodyPart: traer todos y filtrar localmente para no perder resultados por la paginación.
+      const allExercises = await fetchAllForBodyPart(bodyPart)
 
       const searchLower = search.toLowerCase()
-      const filtered = data.data.filter(ex =>
+      const filtered = allExercises.filter(ex =>
         ex.name.toLowerCase().includes(searchLower) ||
         (ex.targetMuscles && ex.targetMuscles.some(m => m.toLowerCase().includes(searchLower))) ||
         (ex.equipments && ex.equipments.some(eq => eq.toLowerCase().includes(searchLower)))
       )
 
+      // Paginar manualmente los resultados filtrados
+      const paged = filtered.slice(offset, offset + limit)
+
       return {
-        exercises: filtered.map(processExercise),
+        exercises: paged.map(processExercise),
         total: filtered.length
       }
     } else if (bodyPart) {

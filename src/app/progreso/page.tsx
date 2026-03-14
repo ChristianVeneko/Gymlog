@@ -6,8 +6,9 @@ import Link from 'next/link'
 import WorkoutDetailModal from '@/components/WorkoutDetailModal'
 import Icon from '@/components/Icon'
 import { CheckCircleIcon, ClockIcon } from '@heroicons/react/24/solid'
-import { CalendarIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon, DocumentTextIcon, ChartBarIcon } from '@heroicons/react/24/outline'
 import { formatDateString } from '@/lib/utils/dateUtils'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 // Componente del Calendario de Rachas
 function CalendarioRachas({ workoutDates, entrenamientos, onDayClick }: { 
@@ -224,6 +225,12 @@ export default function ProgresoPage() {
   const [dayWorkouts, setDayWorkouts] = useState<any[]>([])
   const [showDayModal, setShowDayModal] = useState(false)
   
+  // Estados para gráficas de progreso
+  const [exercisesList, setExercisesList] = useState<any[]>([])
+  const [selectedProgressExercise, setSelectedProgressExercise] = useState<string>('')
+  const [progressData, setProgressData] = useState<any[]>([])
+  const [progressLoading, setProgressLoading] = useState(false)
+  
   const handleDayClick = (date: string) => {
     const workouts = entrenamientos.filter(e => e.fecha.startsWith(date))
     setDayWorkouts(workouts)
@@ -248,6 +255,20 @@ export default function ProgresoPage() {
         const entrenamientosData = await entrenamientosRes.json()
         if (entrenamientosData.success) {
           setEntrenamientos(entrenamientosData.data || [])
+          
+          // Extraer fechas únicas de entrenamiento
+          const dates = entrenamientosData.data.map((e: any) => e.fecha)
+          setWorkoutDates(Array.from(new Set(dates)) as string[])
+        }
+
+        // Cargar lista de ejercicios realizados (frecuencia) para selector de gráficas
+        const freqRes = await fetch('/api/stats?type=frequency', { credentials: 'include' })
+        const freqData = await freqRes.json()
+        if (freqData.success && freqData.data?.exerciseFrequency) {
+          setExercisesList(freqData.data.exerciseFrequency)
+          if (freqData.data.exerciseFrequency.length > 0) {
+            setSelectedProgressExercise(freqData.data.exerciseFrequency[0].ejercicioId)
+          }
         }
 
         // Cargar todos los días entrenados para el calendario (últimos 6 meses)
@@ -271,11 +292,42 @@ export default function ProgresoPage() {
     fetchData()
   }, [])
 
-  if (loading) return (
+  // Efecto para cargar progreso cuando cambia el ejercicio seleccionado
+  useEffect(() => {
+    const fetchProgress = async () => {
+      if (!selectedProgressExercise) return
+      setProgressLoading(true)
+      try {
+        const res = await fetch(`/api/stats?type=progress&ejercicio_id=${selectedProgressExercise}`)
+        const data = await res.json()
+        if (data.success && data.data && data.data.length > 0) {
+          const exerciseProgress = data.data.find((e: any) => e.ejercicioId === selectedProgressExercise)
+          if (exerciseProgress && exerciseProgress.data) {
+             const formattedData = exerciseProgress.data.map((d: any) => ({
+               fechaStr: d.fecha.split('-').slice(1).join('/'), // MM/DD
+               peso: d.maxWeight,
+               reps: d.maxReps,
+               fechaCompleta: d.fecha
+             }))
+             setProgressData(formattedData)
+          } else {
+             setProgressData([])
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching progress:', e)
+      } finally {
+        setProgressLoading(false)
+      }
+    }
+    fetchProgress()
+  }, [selectedProgressExercise])
+
+  if (loading) { return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
-  )
+  )}
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -382,8 +434,83 @@ export default function ProgresoPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Historial de entrenamientos */}
-          <div className="lg:col-span-2">
+          {/* Columna Principal */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Gráficas de Progreso Recharts */}
+            <div className="bg-white rounded-xl shadow-sm border p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <ChartBarIcon className="h-6 w-6 text-blue-500" />
+                  Curva de Progreso
+                </h2>
+                
+                {exercisesList.length > 0 && (
+                  <select
+                    value={selectedProgressExercise}
+                    onChange={(e) => setSelectedProgressExercise(e.target.value)}
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 max-w-xs w-full"
+                  >
+                    {exercisesList.map((ex) => (
+                      <option key={ex.ejercicioId} value={ex.ejercicioId}>
+                        {ex.ejercicioName}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {exercisesList.length === 0 ? (
+                 <div className="text-center py-8 text-gray-500">
+                   Entrena ejercicios para ver sus curvas de progreso.
+                 </div>
+              ) : progressLoading ? (
+                 <div className="h-[300px] flex items-center justify-center">
+                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                 </div>
+              ) : progressData.length > 0 ? (
+                 <div className="h-[300px] w-full">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <LineChart data={progressData} margin={{ top: 5, right: 0, left: -20, bottom: 5 }}>
+                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                       <XAxis dataKey="fechaStr" tick={{fontSize: 12}} tickMargin={10} />
+                       <YAxis yAxisId="left" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                       <YAxis yAxisId="right" orientation="right" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                       <Tooltip 
+                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                         labelFormatter={(label, payload) => payload[0]?.payload?.fechaCompleta || label}
+                       />
+                       <Legend verticalAlign="top" height={36}/>
+                       <Line 
+                         yAxisId="left"
+                         type="monotone" 
+                         dataKey="peso" 
+                         name="Peso (kg)" 
+                         stroke="#3b82f6" 
+                         strokeWidth={3}
+                         dot={{ r: 4, fill: '#3b82f6' }}
+                         activeDot={{ r: 8 }} 
+                       />
+                       <Line 
+                         yAxisId="right"
+                         type="monotone" 
+                         dataKey="reps" 
+                         name="Repeticiones" 
+                         stroke="#10b981" 
+                         strokeWidth={3}
+                         dot={{ r: 4, fill: '#10b981' }}
+                       />
+                     </LineChart>
+                   </ResponsiveContainer>
+                 </div>
+              ) : (
+                 <div className="text-center py-8 text-gray-500">
+                   No hay suficientes datos de historial para este ejercicio.
+                 </div>
+              )}
+            </div>
+
+            {/* Historial de entrenamientos */}
             <div className="bg-white rounded-xl shadow-sm border p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><CalendarIcon className="h-5 w-5 text-blue-500" /> Historial de Entrenamientos</h2>
               {entrenamientos.length > 0 ? (

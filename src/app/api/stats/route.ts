@@ -50,6 +50,9 @@ export async function GET(request: NextRequest) {
         case 'body_metrics':
           return await getBodyMetrics(user.userId, startDate, endDate)
         
+        case 'last_sets':
+          return await getLastSets(user.userId, searchParams.get('ejercicio_ids'))
+          
         case 'detailed':
           // ✅ AGREGADO: Alias para overview con más detalles
           return await getOverviewStats(user.userId, dateConditions)
@@ -395,6 +398,69 @@ async function getBodyMetrics(userId: string, startDate?: string | null, endDate
 
   } catch (error) {
     console.error('Error in getBodyMetrics:', error)
+    throw error
+  }
+}
+
+// Obtener últimos sets completados para una lista de ejercicios
+async function getLastSets(userId: string, ejercicioIdsStr: string | null) {
+  try {
+    if (!ejercicioIdsStr) {
+      return Response.json({ success: true, data: {} })
+    }
+
+    const exerciseIds = ejercicioIdsStr.split(',').filter(id => id.trim().length > 0)
+    if (exerciseIds.length === 0) {
+      return Response.json({ success: true, data: {} })
+    }
+
+    const results: Record<string, any[]> = {}
+
+    // Para cada ejercicio, buscar el entrenamiento más reciente donde se completó, y traer esos sets
+    for (const exId of exerciseIds) {
+      const latestWorkout = await db
+        .select({
+          entrenamientoId: sets.entrenamientoId
+        })
+        .from(sets)
+        .leftJoin(entrenamientos, eq(sets.entrenamientoId, entrenamientos.id))
+        .where(and(
+          eq(entrenamientos.userId, userId),
+          eq(entrenamientos.completed, true),
+          eq(sets.ejercicioId, exId),
+          eq(sets.completed, true)
+        ))
+        .orderBy(desc(entrenamientos.fecha))
+        .limit(1)
+
+      if (latestWorkout.length > 0 && latestWorkout[0]?.entrenamientoId) {
+        const latestSets = await db
+          .select({
+            setNumber: sets.setNumber,
+            weight: sets.weight,
+            reps: sets.reps
+          })
+          .from(sets)
+          .where(and(
+            eq(sets.entrenamientoId, latestWorkout[0].entrenamientoId),
+            eq(sets.ejercicioId, exId),
+            eq(sets.completed, true)
+          ))
+          .orderBy(sets.setNumber)
+
+        if (latestSets.length > 0) {
+          results[exId] = latestSets
+        }
+      }
+    }
+
+    return Response.json({
+      success: true,
+      data: results
+    })
+
+  } catch (error) {
+    console.error('Error in getLastSets:', error)
     throw error
   }
 }
