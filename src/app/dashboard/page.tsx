@@ -125,12 +125,12 @@ export default function DashboardPage() {
         )}
 
         {/* Acciones rápidas - SIMPLIFICADAS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
           <Link href="/rutinas/crear" className="bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl p-6 transition-all duration-200 shadow-lg hover:shadow-xl">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-lg">Crear Rutina</h3>
-                <p className="text-blue-100 text-sm">Nueva rutina de ejercicios</p>
+                <p className="text-blue-100 text-sm">Nueva rutina</p>
               </div>
               <Icon name="biceps" size={40} className="invert" />
             </div>
@@ -140,7 +140,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-lg">Mis Rutinas</h3>
-                <p className="text-purple-100 text-sm">Ver todas las rutinas</p>
+                <p className="text-purple-100 text-sm">Ver todas</p>
               </div>
               <Icon name="workout-list" size={40} className="invert" />
             </div>
@@ -150,9 +150,19 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-lg">Progreso</h3>
-                <p className="text-orange-100 text-sm">Estadísticas y análisis</p>
+                <p className="text-orange-100 text-sm">Estadísticas</p>
               </div>
               <Icon name="progress" size={40} className="invert" />
+            </div>
+          </Link>
+
+          <Link href="/perfil" className="bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl p-6 transition-all duration-200 shadow-lg hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg">Mi Perfil</h3>
+                <p className="text-emerald-100 text-sm">Cuenta y métricas</p>
+              </div>
+              <Icon name="target" size={40} className="invert" />
             </div>
           </Link>
         </div>
