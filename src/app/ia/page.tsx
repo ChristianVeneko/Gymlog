@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
+import Icon from '@/components/Icon'
 
 export default function IAPage() {
   const { user } = useAuth()
@@ -40,7 +41,7 @@ export default function IAPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">🤖 Análisis con IA</h1>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2"><Icon name="ai-brain" size={28} /> Análisis con IA</h1>
             <p className="text-gray-600">Obtén recomendaciones personalizadas sobre tu progreso</p>
           </div>
           <Link href="/dashboard" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
@@ -58,7 +59,7 @@ export default function IAPage() {
             disabled={loading}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl p-6 transition-colors text-left"
           >
-            <div className="text-3xl mb-3">📊</div>
+            <Icon name="progress" size={32} className="mb-3 invert" />
             <h3 className="font-semibold text-lg mb-2">Análisis General</h3>
             <p className="text-blue-100 text-sm">Evaluación completa de tu progreso y rendimiento</p>
           </button>
@@ -71,7 +72,7 @@ export default function IAPage() {
             disabled={loading}
             className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-xl p-6 transition-colors text-left"
           >
-            <div className="text-3xl mb-3">💪</div>
+            <Icon name="biceps" size={32} className="mb-3 invert" />
             <h3 className="font-semibold text-lg mb-2">Optimización de Rutina</h3>
             <p className="text-green-100 text-sm">Recomendaciones para mejorar tu rutina actual</p>
           </button>
@@ -84,7 +85,7 @@ export default function IAPage() {
             disabled={loading}
             className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-xl p-6 transition-colors text-left"
           >
-            <div className="text-3xl mb-3">🔄</div>
+            <Icon name="clock" size={32} className="mb-3 invert" />
             <h3 className="font-semibold text-lg mb-2">Recuperación</h3>
             <p className="text-purple-100 text-sm">Consejos sobre descanso y recuperación</p>
           </button>
@@ -106,7 +107,7 @@ export default function IAPage() {
         {analysis && !loading && (
           <div className="bg-white rounded-xl shadow-sm border p-6">
             <div className="flex items-center mb-6">
-              <div className="text-3xl mr-3">🤖</div>
+              <Icon name="ai-brain" size={32} className="mr-3" />
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Análisis Personalizado</h2>
                 <p className="text-gray-600 text-sm">Generado el {new Date().toLocaleDateString('es-ES')}</p>

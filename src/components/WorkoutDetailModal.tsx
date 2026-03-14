@@ -116,7 +116,7 @@ export default function WorkoutDetailModal({ workoutId, onClose }: WorkoutDetail
                 {workout.workoutTitle || 'Detalles del Entrenamiento'}
               </h2>
               <div className="space-y-1 text-sm text-blue-100">
-                <p>📅 {(() => {
+                <p>{(() => {
                   const [year, month, day] = workout.fecha.split('-').map(Number)
                   const date = new Date(year, month - 1, day)
                   return date.toLocaleDateString('es-ES', { 
@@ -126,9 +126,9 @@ export default function WorkoutDetailModal({ workoutId, onClose }: WorkoutDetail
                     day: 'numeric' 
                   })
                 })()}</p>
-                <p>⏱️ Duración: {workout.duration} minutos</p>
+                <p>Duración: {workout.duration} minutos</p>
                 {workout.startTime && workout.endTime && (
-                  <p>🕐 {workout.startTime} - {workout.endTime}</p>
+                  <p>{workout.startTime} - {workout.endTime}</p>
                 )}
               </div>
             </div>
@@ -145,7 +145,7 @@ export default function WorkoutDetailModal({ workoutId, onClose }: WorkoutDetail
         <div className="flex-1 overflow-y-auto p-6">
           {workout.notes && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h3 className="font-semibold text-yellow-900 mb-2">📝 Notas del Entrenamiento</h3>
+              <h3 className="font-semibold text-yellow-900 mb-2">Notas del Entrenamiento</h3>
               <p className="text-yellow-800 text-sm">{workout.notes}</p>
             </div>
           )}

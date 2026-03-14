@@ -6,6 +6,8 @@ import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
 import ActiveWorkout from '@/components/ActiveWorkout'
 import WorkoutDetailModal from '@/components/WorkoutDetailModal'
+import Icon from '@/components/Icon'
+import { CheckCircleIcon, ClockIcon } from '@heroicons/react/24/solid'
 import { formatDateString } from '@/lib/utils/dateUtils'
 
 export default function DashboardPage() {
@@ -84,7 +86,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center py-4 sm:py-6 gap-2 sm:gap-4">
             <div className="flex-shrink-0">
               <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-1 sm:gap-2">
-                <span className="text-xl sm:text-4xl">🏋️‍♂️</span> 
+                <Icon name="logo" size={36} /> 
                 <span className="hidden xs:inline">GymLog</span>
                 <span className="inline xs:hidden">GL</span>
               </h1>
@@ -130,7 +132,7 @@ export default function DashboardPage() {
                 <h3 className="font-bold text-lg">Crear Rutina</h3>
                 <p className="text-blue-100 text-sm">Nueva rutina de ejercicios</p>
               </div>
-              <div className="text-4xl">💪</div>
+              <Icon name="biceps" size={40} className="invert" />
             </div>
           </Link>
 
@@ -140,7 +142,7 @@ export default function DashboardPage() {
                 <h3 className="font-bold text-lg">Mis Rutinas</h3>
                 <p className="text-purple-100 text-sm">Ver todas las rutinas</p>
               </div>
-              <div className="text-4xl">📋</div>
+              <Icon name="workout-list" size={40} className="invert" />
             </div>
           </Link>
 
@@ -150,7 +152,7 @@ export default function DashboardPage() {
                 <h3 className="font-bold text-lg">Progreso</h3>
                 <p className="text-orange-100 text-sm">Estadísticas y análisis</p>
               </div>
-              <div className="text-4xl">📊</div>
+              <Icon name="progress" size={40} className="invert" />
             </div>
           </Link>
         </div>
@@ -166,7 +168,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
               <div className="flex items-center mb-4">
                 <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                  <span className="text-white text-lg">📈</span>
+                  <Icon name="summary" size={20} className="invert" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">Resumen General</h2>
               </div>
@@ -177,7 +179,7 @@ export default function DashboardPage() {
                     <div className="text-sm text-gray-700">Entrenamientos</div>
                   </div>
                   <div className="text-center p-4 bg-orange-50 rounded-lg">
-                    <div className="text-3xl font-bold text-orange-600">{stats.streak || 0} 🔥</div>
+                    <div className="text-3xl font-bold text-orange-600 flex items-center justify-center gap-1">{stats.streak || 0} <Icon name="fire" size={28} /></div>
                     <div className="text-sm text-gray-700">Racha (días)</div>
                   </div>
                   <div className="text-center p-4 bg-purple-50 rounded-lg">
@@ -191,7 +193,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <div className="text-6xl mb-3">🎯</div>
+                  <Icon name="target" size={64} className="mb-3 mx-auto" />
                   <h3 className="text-lg font-bold text-gray-900 mb-2">¡Comienza tu viaje!</h3>
                   <p className="text-gray-600 mb-4">Crea tu primera rutina</p>
                   <Link href="/rutinas/crear" className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-bold">
@@ -207,7 +209,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
               <div className="flex items-center mb-4">
                 <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-                  <span className="text-white text-lg">🕒</span>
+                  <Icon name="clock" size={20} className="invert" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">Actividad Reciente</h2>
               </div>
@@ -228,7 +230,7 @@ export default function DashboardPage() {
                       <div className={`px-3 py-1 rounded-full text-xs font-bold ${
                         workout.completed ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
                       }`}>
-                        {workout.completed ? '✅' : '⏳'}
+                        {workout.completed ? <CheckCircleIcon className="h-4 w-4" /> : <ClockIcon className="h-4 w-4" />}
                       </div>
                     </button>
                   ))}
@@ -238,7 +240,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <div className="text-5xl mb-3">📝</div>
+                  <Icon name="notepad" size={48} className="mb-3 mx-auto" />
                   <p className="text-gray-600">No hay entrenamientos aún</p>
                 </div>
               )}

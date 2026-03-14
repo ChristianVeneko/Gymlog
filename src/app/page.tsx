@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
+import Icon from '@/components/Icon'
 
 export default function HomePage() {
   const router = useRouter()
@@ -21,7 +22,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="text-center text-white max-w-4xl mx-auto">
-          <div className="text-8xl mb-8">🏋️‍♂️</div>
+          <Icon name="logo" size={96} className="mb-8 mx-auto invert" />
           <h1 className="text-6xl font-bold mb-6">GymLog</h1>
           <p className="text-2xl mb-8 text-blue-100">
             Tu compañero inteligente para el fitness
@@ -48,7 +49,7 @@ export default function HomePage() {
 
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-              <div className="text-4xl mb-4">📊</div>
+              <Icon name="progress" size={48} className="mb-4 mx-auto invert" />
               <h3 className="text-xl font-semibold mb-2">Seguimiento Inteligente</h3>
               <p className="text-blue-100">
                 Registra tu progreso automáticamente y visualiza tu evolución
@@ -56,7 +57,7 @@ export default function HomePage() {
             </div>
             
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-              <div className="text-4xl mb-4">🤖</div>
+              <Icon name="ai-brain" size={48} className="mb-4 mx-auto invert" />
               <h3 className="text-xl font-semibold mb-2">IA Personal</h3>
               <p className="text-blue-100">
                 Obtén recomendaciones personalizadas basadas en tu progreso
@@ -64,7 +65,7 @@ export default function HomePage() {
             </div>
             
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6">
-              <div className="text-4xl mb-4">💪</div>
+              <Icon name="biceps" size={48} className="mb-4 mx-auto invert" />
               <h3 className="text-xl font-semibold mb-2">Rutinas Adaptables</h3>
               <p className="text-blue-100">
                 Crea y modifica rutinas que se adapten a tu nivel y objetivos
@@ -73,8 +74,8 @@ export default function HomePage() {
           </div>
 
           <div className="mt-12">
-            <Link href="/test" className="text-sm text-blue-200 hover:text-white">
-              🧪 Página de pruebas técnicas
+            <Link href="/test" className="text-sm text-blue-200 hover:text-white inline-flex items-center gap-1">
+              <Icon name="flask" size={16} className="invert" /> Página de pruebas técnicas
             </Link>
           </div>
         </div>

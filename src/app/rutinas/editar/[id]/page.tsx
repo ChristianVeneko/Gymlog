@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
-import { MagnifyingGlassIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon, LightBulbIcon } from '@heroicons/react/24/outline'
+import Icon from '@/components/Icon'
 
 interface Ejercicio {
   id: string
@@ -40,16 +41,16 @@ const DAYS_OF_WEEK = [
 ]
 
 const BODY_PART_LABELS: Record<string, string> = {
-  'back': '🔱 Back',
-  'cardio': '❤️ Cardio',
-  'chest': '💪 Chest',
-  'lower arms': '🤜 Lower Arms',
-  'lower legs': '🦿 Lower Legs',
-  'neck': '🗿 Neck',
-  'shoulders': '🏋️ Shoulders',
-  'upper arms': '💪 Upper Arms',
-  'upper legs': '🦵 Upper Legs',
-  'waist': '🔥 Waist / Core'
+  'back': 'Back',
+  'cardio': 'Cardio',
+  'chest': 'Chest',
+  'lower arms': 'Lower Arms',
+  'lower legs': 'Lower Legs',
+  'neck': 'Neck',
+  'shoulders': 'Shoulders',
+  'upper arms': 'Upper Arms',
+  'upper legs': 'Upper Legs',
+  'waist': 'Waist / Core'
 }
 
 const generateDayTitle = (day: string, ejercicios: RutinaEjercicio[]): string => {
@@ -328,7 +329,7 @@ export default function EditarRutinaPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">✏️ Editar Rutina</h1>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2"><Icon name="edit" size={28} /> Editar Rutina</h1>
           <p className="text-gray-600">Modifica tu rutina de entrenamiento</p>
         </div>
 
@@ -521,19 +522,19 @@ export default function EditarRutinaPage() {
                   </div>
                 ) : !searchTerm && !selectedBodyPart ? (
                   <div className="text-center py-12">
-                    <div className="text-4xl mb-2">🔍</div>
+                    <MagnifyingGlassIcon className="h-12 w-12 mx-auto mb-2 text-gray-400" />
                     <p className="font-semibold mb-1 text-gray-700">Busca o filtra ejercicios</p>
                     <p className="text-sm text-gray-500">Selecciona un grupo muscular o escribe para buscar</p>
                   </div>
                 ) : searchTerm && !selectedBodyPart && searchTerm.length < 2 ? (
                   <div className="text-center py-12">
-                    <div className="text-4xl mb-2">✍️</div>
+                    <Icon name="edit" size={48} className="mx-auto mb-2 opacity-40" />
                     <p className="font-semibold mb-1 text-gray-700">Escribe más caracteres</p>
                     <p className="text-sm text-gray-500">Necesitas al menos 2 letras para buscar</p>
                   </div>
                 ) : ejercicios.length === 0 ? (
                   <div className="text-center py-12">
-                    <div className="text-4xl mb-2">😕</div>
+                    <Icon name="not-found" size={48} className="mx-auto mb-2 opacity-40" />
                     <p className="text-gray-700">No se encontraron ejercicios</p>
                     <p className="text-sm text-gray-500 mt-1">Prueba con otra búsqueda</p>
                   </div>
@@ -589,8 +590,9 @@ export default function EditarRutinaPage() {
 
               <div className="p-6 space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800">
-                    💡 <strong>Nota:</strong> Solo defines cuántas series harás. Peso y reps se anotan al entrenar.
+                  <p className="text-sm text-blue-800 flex items-start gap-2">
+                    <LightBulbIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                    <span><strong>Nota:</strong> Solo defines cuántas series harás. Peso y reps se anotan al entrenar.</span>
                   </p>
                 </div>
 

@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
 import Link from 'next/link'
 import WorkoutDetailModal from '@/components/WorkoutDetailModal'
+import Icon from '@/components/Icon'
+import { CheckCircleIcon, ClockIcon } from '@heroicons/react/24/solid'
+import { CalendarIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 import { formatDateString } from '@/lib/utils/dateUtils'
 
 // Componente del Calendario de Rachas
@@ -74,7 +77,7 @@ function CalendarioRachas({ workoutDates, entrenamientos, onDayClick }: {
   return (
     <div className="bg-white rounded-xl shadow-sm border p-4 md:p-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
-        <h3 className="text-base md:text-lg font-bold text-gray-900">📅 Calendario de Entrenamientos</h3>
+        <h3 className="text-base md:text-lg font-bold text-gray-900 flex items-center gap-2"><CalendarIcon className="h-5 w-5 text-blue-500" /> Calendario de Entrenamientos</h3>
         <div className="flex items-center space-x-2">
           <button 
             onClick={previousMonth}
@@ -151,11 +154,11 @@ function CalendarioRachas({ workoutDates, entrenamientos, onDayClick }: {
                 ${today ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
                 transition-all ${hasWorkout ? 'hover:scale-110' : ''} ${hasWorkout ? 'active:scale-95' : ''}
               `}
-              title={hasWorkout ? `✅ Entrenaste el ${day} de ${monthNames[month]} - Clic para detalles` : `No entrenaste el ${day}`}
+              title={hasWorkout ? `Entrenaste el ${day} de ${monthNames[month]} - Clic para detalles` : `No entrenaste el ${day}`}
             >
               {hasWorkout && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[8px] md:text-[10px]">💪</span>
+                  <span className="text-[8px] md:text-[10px]"><Icon name="biceps" size={10} className="invert" /></span>
                 </div>
               )}
               <span className={`relative text-[10px] md:text-xs ${hasWorkout ? 'font-extrabold' : ''}`}>{day}</span>
@@ -184,23 +187,23 @@ function CalendarioRachas({ workoutDates, entrenamientos, onDayClick }: {
         {/* Mensaje motivacional */}
         {percentageTrained >= 80 && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 md:p-3 text-center">
-            <p className="text-xs md:text-sm font-semibold text-yellow-800">
-              🏆 ¡Excelente mes! Has entrenado {percentageTrained}% de los días
-            </p>
+              <p className="text-xs md:text-sm font-semibold text-yellow-800 flex items-center justify-center gap-1">
+                <Icon name="target" size={16} /> Excelente mes! Has entrenado {percentageTrained}% de los días
+              </p>
           </div>
         )}
         {percentageTrained >= 50 && percentageTrained < 80 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 md:p-3 text-center">
-            <p className="text-xs md:text-sm font-semibold text-blue-800">
-              💪 ¡Buen trabajo! Llevas {percentageTrained}% del mes entrenado
-            </p>
+              <p className="text-xs md:text-sm font-semibold text-blue-800 flex items-center justify-center gap-1">
+                <Icon name="biceps" size={16} /> Buen trabajo! Llevas {percentageTrained}% del mes entrenado
+              </p>
           </div>
         )}
         {percentageTrained > 0 && percentageTrained < 50 && (
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 md:p-3 text-center">
-            <p className="text-xs md:text-sm font-semibold text-purple-800">
-              🎯 ¡Vamos! Puedes mejorar tu consistencia este mes
-            </p>
+              <p className="text-xs md:text-sm font-semibold text-purple-800 flex items-center justify-center gap-1">
+                <Icon name="target" size={16} /> Vamos! Puedes mejorar tu consistencia este mes
+              </p>
           </div>
         )}
       </div>
@@ -279,7 +282,7 @@ export default function ProgresoPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">📊 Mi Progreso</h1>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2"><Icon name="progress" size={28} /> Mi Progreso</h1>
             <p className="text-gray-600">Analiza tu rendimiento y evolución</p>
           </div>
           <Link href="/dashboard" className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
@@ -301,7 +304,7 @@ export default function ProgresoPage() {
                 <p className="text-sm font-medium text-gray-600">Total Entrenamientos</p>
                 <p className="text-3xl font-bold text-blue-600">{stats?.totalWorkouts || 0}</p>
               </div>
-              <div className="text-3xl">💪</div>
+              <Icon name="biceps" size={32} />
             </div>
           </div>
 
@@ -311,10 +314,10 @@ export default function ProgresoPage() {
                 <p className="text-sm font-medium text-orange-800">Racha Actual</p>
                 <p className="text-3xl font-bold text-orange-600">{stats?.streak || 0} días</p>
                 <p className="text-xs text-orange-700 mt-1">
-                  {stats?.streak > 0 ? '¡Sigue así! 💪' : 'Comienza hoy'}
+                  {stats?.streak > 0 ? 'Sigue así!' : 'Comienza hoy'}
                 </p>
               </div>
-              <div className="text-4xl animate-pulse">🔥</div>
+              <Icon name="fire" size={36} className="animate-pulse" />
             </div>
           </div>
 
@@ -324,7 +327,7 @@ export default function ProgresoPage() {
                 <p className="text-sm font-medium text-gray-600">Sets Completados</p>
                 <p className="text-3xl font-bold text-purple-600">{stats?.totalSets || 0}</p>
               </div>
-              <div className="text-3xl">📈</div>
+              <Icon name="summary" size={32} />
             </div>
           </div>
 
@@ -334,7 +337,7 @@ export default function ProgresoPage() {
                 <p className="text-sm font-medium text-gray-600">Peso Máximo</p>
                 <p className="text-3xl font-bold text-green-600">{stats?.maxWeight || 0} kg</p>
               </div>
-              <div className="text-3xl">🏋️</div>
+              <Icon name="weightlifting" size={32} />
             </div>
           </div>
         </div>
@@ -352,7 +355,7 @@ export default function ProgresoPage() {
           {/* Mini resumen lateral en desktop */}
           <div className="hidden lg:block space-y-4">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-              <h4 className="text-sm font-bold text-gray-900 mb-3">📊 Resumen Rápido</h4>
+              <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1"><Icon name="progress" size={16} /> Resumen Rápido</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total entrenamientos:</span>
@@ -370,7 +373,7 @@ export default function ProgresoPage() {
             </div>
             
             <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
-              <h4 className="text-sm font-bold text-gray-900 mb-2">💡 Consejo</h4>
+              <h4 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1"><Icon name="sparkle" size={16} /> Consejo</h4>
               <p className="text-xs text-gray-700 leading-relaxed">
                 Haz clic en cualquier día verde del calendario para ver los detalles de ese entrenamiento
               </p>
@@ -382,7 +385,7 @@ export default function ProgresoPage() {
           {/* Historial de entrenamientos */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">📅 Historial de Entrenamientos</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><CalendarIcon className="h-5 w-5 text-blue-500" /> Historial de Entrenamientos</h2>
               {entrenamientos.length > 0 ? (
                 <div className="space-y-4">
                   {entrenamientos.map((entrenamiento) => (
@@ -401,16 +404,16 @@ export default function ProgresoPage() {
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {entrenamiento.completed ? '✅ Completado' : '⏳ En progreso'}
+                            {entrenamiento.completed ? 'Completado' : 'En progreso'}
                           </div>
                         </div>
                         <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>📅 {formatDateString(entrenamiento.fecha)}</span>
-                          <span>⏱️ {entrenamiento.duration || 0} min</span>
-                          <span>🏋️ {entrenamiento.sets_count || 0} sets</span>
+                          <span className="flex items-center gap-1"><CalendarIcon className="h-3.5 w-3.5" /> {formatDateString(entrenamiento.fecha)}</span>
+                          <span className="flex items-center gap-1"><Icon name="clock" size={14} /> {entrenamiento.duration || 0} min</span>
+                          <span className="flex items-center gap-1"><Icon name="weightlifting" size={14} /> {entrenamiento.sets_count || 0} sets</span>
                         </div>
                         {entrenamiento.notes && (
-                          <p className="text-sm text-gray-600 mt-2">📝 {entrenamiento.notes}</p>
+                          <p className="text-sm text-gray-600 mt-2 flex items-center gap-1"><DocumentTextIcon className="h-4 w-4" /> {entrenamiento.notes}</p>
                         )}
                       </div>
                     </button>
@@ -418,7 +421,7 @@ export default function ProgresoPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="text-4xl mb-4">📈</div>
+                  <Icon name="summary" size={48} className="mb-4 mx-auto" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No hay entrenamientos registrados</h3>
                   <p className="text-gray-600 mb-6">Comienza a entrenar para ver tu progreso aquí</p>
                   <Link href="/entrenar" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
@@ -434,7 +437,7 @@ export default function ProgresoPage() {
             {/* Racha de entrenamientos */}
             <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl shadow-sm border border-orange-200 p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center justify-center">
-                <span className="text-2xl mr-2 animate-pulse">🔥</span>
+                <Icon name="fire" size={24} className="animate-pulse" />
                 Racha Actual
               </h3>
               <div className="text-center">
@@ -446,17 +449,17 @@ export default function ProgresoPage() {
                   <div className="mt-4 pt-4 border-t border-orange-200">
                     <p className="text-xs text-orange-600 font-semibold">
                       {(stats?.currentStreak || stats?.streak) >= 7 
-                        ? '🎉 ¡Increíble semana!' 
+                        ? 'Increíble semana!' 
                         : (stats?.currentStreak || stats?.streak) >= 3 
-                        ? '💪 ¡Buen ritmo!' 
-                        : '👍 ¡Sigue así!'}
+                        ? 'Buen ritmo!' 
+                        : 'Sigue así!'}
                     </p>
                   </div>
                 )}
                 {(stats?.currentStreak || stats?.streak || 0) === 0 && (
                   <div className="mt-4 pt-4 border-t border-orange-200">
                     <p className="text-xs text-gray-600">
-                      ¡Comienza tu racha hoy! 💪
+                      Comienza tu racha hoy!
                     </p>
                   </div>
                 )}
@@ -465,7 +468,7 @@ export default function ProgresoPage() {
 
             {/* Personal Records */}
             <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">🏆 Records Personales</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-1"><Icon name="target" size={20} /> Records Personales</h3>
               {stats?.personalRecords && stats.personalRecords.length > 0 ? (
                 <div className="space-y-3">
                   {stats.personalRecords.slice(0, 5).map((record: any) => (
@@ -477,7 +480,7 @@ export default function ProgresoPage() {
                 </div>
               ) : (
                 <div className="text-center py-4">
-                  <div className="text-2xl mb-2">🎯</div>
+                  <Icon name="target" size={24} className="mx-auto mb-2" />
                   <p className="text-sm text-gray-600">No hay records aún</p>
                 </div>
               )}
@@ -485,7 +488,7 @@ export default function ProgresoPage() {
 
             {/* IA Analysis */}
             <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-6 text-white">
-              <h3 className="text-lg font-bold mb-2">🤖 Análisis IA</h3>
+              <h3 className="text-lg font-bold mb-2 flex items-center gap-1"><Icon name="ai-brain" size={20} className="invert" /> Análisis IA</h3>
               <p className="text-indigo-100 text-sm mb-4">Obtén insights personalizados sobre tu progreso</p>
               <Link href="/ia" className="block w-full text-center bg-white text-indigo-600 py-2 rounded-lg hover:bg-gray-100 transition-colors font-medium">
                 Ver Análisis
@@ -502,8 +505,8 @@ export default function ProgresoPage() {
             <div className="p-6 border-b bg-gradient-to-r from-blue-500 to-indigo-600">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-white">
-                    📅 {new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', { 
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <CalendarIcon className="h-6 w-6" /> {new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', { 
                       weekday: 'long', 
                       year: 'numeric', 
                       month: 'long', 
@@ -544,25 +547,25 @@ export default function ProgresoPage() {
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-yellow-100 text-yellow-800'
                             }`}>
-                              {entrenamiento.completed ? '✅ Completado' : '⏳ En progreso'}
+                              {entrenamiento.completed ? 'Completado' : 'En progreso'}
                             </div>
                           </div>
                           
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-500">⏱️</span>
+                              <Icon name="clock" size={16} />
                               <span className="text-gray-700">
                                 <strong>{entrenamiento.duration || 0}</strong> min
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-500">🏋️</span>
+                              <Icon name="weightlifting" size={16} />
                               <span className="text-gray-700">
                                 <strong>{entrenamiento.sets_count || 0}</strong> sets
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-500">🕐</span>
+                              <Icon name="clock" size={16} />
                               <span className="text-gray-700">
                                 {new Date(entrenamiento.fecha).toLocaleTimeString('es-ES', { 
                                   hour: '2-digit', 
@@ -575,7 +578,7 @@ export default function ProgresoPage() {
                           {entrenamiento.notes && (
                             <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
                               <p className="text-sm text-gray-700">
-                                <span className="font-semibold text-blue-700">📝 Notas:</span> {entrenamiento.notes}
+                                <span className="font-semibold text-blue-700 flex items-center gap-1"><DocumentTextIcon className="h-4 w-4" /> Notas:</span> {entrenamiento.notes}
                               </p>
                             </div>
                           )}
@@ -598,7 +601,7 @@ export default function ProgresoPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="text-4xl mb-4">😴</div>
+                  <Icon name="not-found" size={48} className="mb-4 mx-auto opacity-40" />
                   <p className="text-gray-600">No hay entrenamientos registrados para este día</p>
                 </div>
               )}

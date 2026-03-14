@@ -155,7 +155,7 @@ export default function RutinasPage() {
                                   : 'bg-blue-100 text-blue-800'
                               }`}
                             >
-                              {day === today ? `🔥 ${day}` : day}
+                              {day === today ? `● ${day}` : day}
                             </span>
                           ))
                         })()}
@@ -165,7 +165,7 @@ export default function RutinasPage() {
                   
                   <div className="text-sm text-gray-500 mb-4 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span>📅</span>
+                      <span></span>
                       <span>{rutina.createdAt ? new Date(rutina.createdAt).toLocaleDateString('es-ES', { 
                         year: 'numeric', 
                         month: 'long', 
@@ -173,7 +173,7 @@ export default function RutinasPage() {
                       }) : 'Fecha no disponible'}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span>💪</span>
+                      <span></span>
                       <span>{rutina.ejercicios_count || 0} ejercicios • {rutina.total_sets || 0} series</span>
                     </div>
                   </div>

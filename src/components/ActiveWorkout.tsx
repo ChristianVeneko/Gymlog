@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { getLocalDate, getLocalDayOfWeek, getBrowserTimezone } from '@/lib/utils/dateUtils'
 import SetInputRow from '@/components/SetInputRow'
+import Icon from '@/components/Icon'
 
 interface Exercise {
   id: string
@@ -340,14 +341,14 @@ export default function ActiveWorkout() {
       <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
         <div className="flex items-center mb-4">
           <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-            <span className="text-white text-lg">🏋️</span>
+            <Icon name="weightlifting" size={20} className="invert" />
           </div>
           <h2 className="text-xl font-bold text-gray-900">Entrenamiento de Hoy</h2>
         </div>
 
         {rutinas.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-5xl mb-3">📝</div>
+            <Icon name="notepad" size={48} className="mb-3 mx-auto" />
             <h3 className="text-lg font-bold text-gray-900 mb-2">No tienes rutinas</h3>
             <p className="text-gray-600 mb-4 text-sm">Crea tu primera rutina</p>
             <a
@@ -439,7 +440,7 @@ export default function ActiveWorkout() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-            <span className="text-white text-lg">🏋️</span>
+            <Icon name="weightlifting" size={20} className="invert" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-gray-900">{activeWorkout.rutinaName}</h2>
@@ -564,7 +565,7 @@ export default function ActiveWorkout() {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
-                  ⏱️ <strong>{manualDuration} minutos</strong> = {Math.floor(manualDuration / 60)}h {manualDuration % 60}m
+                  <Icon name="clock" size={16} className="inline" /> <strong>{manualDuration} minutos</strong> = {Math.floor(manualDuration / 60)}h {manualDuration % 60}m
                 </p>
               </div>
 

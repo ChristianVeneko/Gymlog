@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth, useAuthGuard } from '@/lib/auth/AuthContext'
-import { MagnifyingGlassIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon, XMarkIcon, LightBulbIcon } from '@heroicons/react/24/outline'
+import Icon from '@/components/Icon'
 
 interface Ejercicio {
   id: string
@@ -40,16 +41,16 @@ const DAYS_OF_WEEK = [
 ]
 
 const BODY_PART_LABELS: Record<string, string> = {
-  'back': '🔱 Back',
-  'cardio': '❤️ Cardio',
-  'chest': '💪 Chest',
-  'lower arms': '🤜 Lower Arms',
-  'lower legs': '🦿 Lower Legs',
-  'neck': '🗿 Neck',
-  'shoulders': '🏋️ Shoulders',
-  'upper arms': '💪 Upper Arms',
-  'upper legs': '🦵 Upper Legs',
-  'waist': '🔥 Waist / Core'
+  'back': 'Back',
+  'cardio': 'Cardio',
+  'chest': 'Chest',
+  'lower arms': 'Lower Arms',
+  'lower legs': 'Lower Legs',
+  'neck': 'Neck',
+  'shoulders': 'Shoulders',
+  'upper arms': 'Upper Arms',
+  'upper legs': 'Upper Legs',
+  'waist': 'Waist / Core'
 }
 
 // Genera título de día basado en músculos trabajados
@@ -523,19 +524,19 @@ export default function CrearRutinaPage() {
                 </div>
               ) : !searchTerm && !selectedBodyPart ? (
                 <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-2">🔍</div>
+                  <MagnifyingGlassIcon className="h-12 w-12 mx-auto mb-2 text-gray-400" />
                   <p className="font-semibold mb-1">Busca o filtra ejercicios</p>
                   <p className="text-sm">Selecciona un grupo muscular o escribe para buscar</p>
                 </div>
               ) : searchTerm && !selectedBodyPart && searchTerm.length < 2 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-2">✍️</div>
+                  <Icon name="edit" size={48} className="mx-auto mb-2 opacity-40" />
                   <p className="font-semibold mb-1">Escribe más caracteres</p>
                   <p className="text-sm">Necesitas al menos 2 letras para buscar</p>
                 </div>
               ) : ejercicios.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <div className="text-4xl mb-2">😕</div>
+                  <Icon name="not-found" size={48} className="mx-auto mb-2 opacity-40" />
                   <p>No se encontraron ejercicios</p>
                   <p className="text-sm mt-1">Prueba con otra búsqueda</p>
                 </div>
@@ -612,9 +613,10 @@ export default function CrearRutinaPage() {
 
             <div className="space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-blue-800">
-                  💡 <strong>Nota:</strong> Solo defines cuántas series harás de este ejercicio.
-                  El peso y repeticiones los anotarás al entrenar.
+                <p className="text-sm text-blue-800 flex items-start gap-2">
+                  <LightBulbIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                  <span><strong>Nota:</strong> Solo defines cuántas series harás de este ejercicio.
+                  El peso y repeticiones los anotarás al entrenar.</span>
                 </p>
               </div>
 
