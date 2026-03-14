@@ -22,14 +22,6 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   
-  // Deshabilitar ESLint durante el build (opcional, solo para producción rápida)
-  eslint: {
-    ignoreDuringBuilds: false, // Cambiar a true si quieres build más rápido
-  },
-  typescript: {
-    ignoreBuildErrors: false, // Cambiar a true si hay errores de tipo menores
-  },
-  
   // Headers de seguridad
   async headers() {
     return [
