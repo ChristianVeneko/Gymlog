@@ -8,7 +8,7 @@ import SetInputRow from '@/components/SetInputRow'
 interface Exercise {
   id: string
   name: string
-  nameEs: string
+
   bodyPart: string
   equipment: string
   gifUrl: string
@@ -471,14 +471,14 @@ export default function ActiveWorkout() {
                 <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-200 mr-3 flex-shrink-0">
                   <img
                     src={exercise.gifUrl}
-                    alt={exercise.nameEs}
+                    alt={exercise.name}
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
                 </div>
               )}
               <div className="flex-1">
-                <h3 className="font-bold text-gray-900">{exercise.nameEs}</h3>
+                <h3 className="font-bold text-gray-900">{exercise.name}</h3>
                 <p className="text-sm text-gray-600">{exercise.bodyPart}</p>
               </div>
             </div>

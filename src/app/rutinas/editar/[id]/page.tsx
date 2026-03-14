@@ -8,13 +8,9 @@ import { MagnifyingGlassIcon, PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIco
 interface Ejercicio {
   id: string
   name: string
-  nameEs: string
   bodyPart: string
-  bodyPartEs: string
   equipment: string
-  equipmentEs: string
   target: string
-  targetEs: string
   gifUrl: string
   instructions: string[]
 }
@@ -22,7 +18,6 @@ interface Ejercicio {
 interface RutinaEjercicio {
   ejercicioId: string
   ejercicioName: string
-  ejercicioNameEs: string
   bodyPart: string
   equipment: string
   target: string
@@ -44,41 +39,31 @@ const DAYS_OF_WEEK = [
   'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'
 ]
 
-const BODY_PART_TRANSLATIONS: Record<string, string> = {
-  'back': 'Espalda',
-  'cardio': 'Cardio',
-  'chest': 'Pecho',
-  'lower arms': 'Brazos',
-  'lower legs': 'Piernas',
-  'neck': 'Cuello',
-  'shoulders': 'Hombros',
-  'upper arms': 'Brazos',
-  'upper legs': 'Piernas',
-  'waist': 'Core'
+const BODY_PART_LABELS: Record<string, string> = {
+  'back': '🔱 Back',
+  'cardio': '❤️ Cardio',
+  'chest': '💪 Chest',
+  'lower arms': '🤜 Lower Arms',
+  'lower legs': '🦿 Lower Legs',
+  'neck': '🗿 Neck',
+  'shoulders': '🏋️ Shoulders',
+  'upper arms': '💪 Upper Arms',
+  'upper legs': '🦵 Upper Legs',
+  'waist': '🔥 Waist / Core'
 }
 
 const generateDayTitle = (day: string, ejercicios: RutinaEjercicio[]): string => {
-  if (!ejercicios || ejercicios.length === 0) {
-    return day
-  }
-
+  if (!ejercicios || ejercicios.length === 0) return day
   const bodyPartCounts: Record<string, number> = {}
-  ejercicios.forEach(ejercicio => {
-    const translated = BODY_PART_TRANSLATIONS[ejercicio.bodyPart] || ejercicio.bodyPart
-    bodyPartCounts[translated] = (bodyPartCounts[translated] || 0) + 1
+  ejercicios.forEach(ej => {
+    const bp = ej.bodyPart || 'unknown'
+    bodyPartCounts[bp] = (bodyPartCounts[bp] || 0) + 1
   })
-
-  const sortedBodyParts = Object.entries(bodyPartCounts)
+  const top = Object.entries(bodyPartCounts)
     .sort(([, a], [, b]) => b - a)
-    .map(([part]) => part)
+    .map(([part]) => part.charAt(0).toUpperCase() + part.slice(1))
     .slice(0, 3)
-
-  if (sortedBodyParts.length === 0) {
-    return day
-  }
-
-  const muscleString = sortedBodyParts.join(' y ')
-  return `${day} (${muscleString})`
+  return top.length > 0 ? `${day} (${top.join(', ')})` : day
 }
 
 export default function EditarRutinaPage() {
@@ -87,20 +72,14 @@ export default function EditarRutinaPage() {
   const router = useRouter()
   const params = useParams()
   const rutinaId = params?.id as string
-  
+
   const [rutina, setRutina] = useState<RutinaForm>({
-    name: '',
-    description: '',
-    daysOfWeek: [],
-    ejerciciosPorDia: {},
-    isActive: true
+    name: '', description: '', daysOfWeek: [], ejerciciosPorDia: {}, isActive: true
   })
-  
+
   const [ejercicios, setEjercicios] = useState<Ejercicio[]>([])
-  const [filteredEjercicios, setFilteredEjercicios] = useState<Ejercicio[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedBodyPart, setSelectedBodyPart] = useState('')
-  // Infinite scroll states
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
   const [isFetchingMore, setIsFetchingMore] = useState(false)
@@ -108,9 +87,7 @@ export default function EditarRutinaPage() {
   const [showEjercicioSelector, setShowEjercicioSelector] = useState(false)
   const [showEjercicioConfig, setShowEjercicioConfig] = useState(false)
   const [selectedEjercicio, setSelectedEjercicio] = useState<Ejercicio | null>(null)
-  const [ejercicioConfig, setEjercicioConfig] = useState({
-    sets: 3
-  })
+  const [ejercicioConfig, setEjercicioConfig] = useState({ sets: 3 })
   const [selectedDay, setSelectedDay] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [loadingEjercicios, setLoadingEjercicios] = useState(false)
@@ -120,75 +97,52 @@ export default function EditarRutinaPage() {
 
   // Cargar rutina existente
   useEffect(() => {
-    if (rutinaId) {
-      fetchRutina()
-    }
+    if (rutinaId) fetchRutina()
   }, [rutinaId])
 
-  // Infinite scroll: Reset offset and results when search/filter changes or modal opens
+  // Reset cuando cambia filtro o se abre modal
   useEffect(() => {
     if (!showEjercicioSelector) return
     setOffset(0)
     setHasMore(true)
     setEjercicios([])
-    setFilteredEjercicios([])
   }, [showEjercicioSelector, searchTerm, selectedBodyPart])
 
-  // Infinite scroll: Debounced fetch on search/filter/modal open
+  // Fetch con debounce
   useEffect(() => {
     if (!showEjercicioSelector) return
-    const debounceTimer = setTimeout(() => {
-      fetchEjercicios(0, true)
-    }, 500)
-    return () => clearTimeout(debounceTimer)
+    const timer = setTimeout(() => fetchEjercicios(0, true), 400)
+    return () => clearTimeout(timer)
     // eslint-disable-next-line
   }, [showEjercicioSelector, searchTerm, selectedBodyPart])
 
-  // Infinite scroll: Observer for sentinel div
+  // Infinite scroll observer
   useEffect(() => {
     if (!showEjercicioSelector || !hasMore || loadingEjercicios || isFetchingMore) return
-    
-    const currentObserverRef = observerRef.current
-    if (!currentObserverRef) return
-
-    const observer = new window.IntersectionObserver((entries) => {
+    const el = observerRef.current
+    if (!el) return
+    const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting && !isFetchingMore && !loadingEjercicios) {
         fetchEjercicios(offset, false)
       }
     }, { threshold: 0.1, rootMargin: '50px' })
-    
-    observer.observe(currentObserverRef)
-    
-    return () => {
-      if (currentObserverRef) {
-        observer.unobserve(currentObserverRef)
-      }
-      observer.disconnect()
-    }
+    observer.observe(el)
+    return () => { observer.unobserve(el); observer.disconnect() }
     // eslint-disable-next-line
   }, [hasMore, offset, showEjercicioSelector, loadingEjercicios, isFetchingMore])
 
   const fetchRutina = async () => {
     try {
-      const response = await fetch(`/api/rutinas/${rutinaId}`, {
-        credentials: 'include'
-      })
-
+      const response = await fetch(`/api/rutinas/${rutinaId}`, { credentials: 'include' })
       const data = await response.json()
-      
       if (data.success) {
         const rutinaData = data.data
-        
-        // Agrupar ejercicios por día
         const ejerciciosPorDia: Record<string, RutinaEjercicio[]> = {}
         rutinaData.ejercicios.forEach((ej: any) => {
-          if (!ejerciciosPorDia[ej.dayOfWeek]) {
-            ejerciciosPorDia[ej.dayOfWeek] = []
-          }
+          if (!ejerciciosPorDia[ej.dayOfWeek]) ejerciciosPorDia[ej.dayOfWeek] = []
           ejerciciosPorDia[ej.dayOfWeek].push({
             ejercicioId: ej.ejercicioId,
-            ejercicioName: ej.ejercicioName,
-            ejercicioNameEs: ej.ejercicioNameEs,
+            ejercicioName: ej.ejercicioName || ej.ejercicioNameEs || 'Unknown',
             bodyPart: ej.bodyPart,
             equipment: ej.equipment,
             target: ej.target,
@@ -198,7 +152,6 @@ export default function EditarRutinaPage() {
             sets: ej.sets || 3
           })
         })
-
         setRutina({
           name: rutinaData.name,
           description: rutinaData.description || '',
@@ -216,51 +169,33 @@ export default function EditarRutinaPage() {
     }
   }
 
-  // Infinite scroll: Fetch ejercicios with pagination
   const fetchEjercicios = useCallback(async (customOffset = 0, reset = false) => {
     try {
       if (reset) setLoadingEjercicios(true)
       setIsFetchingMore(!reset)
-      const params = new URLSearchParams({
-        limit: '30',
-        offset: customOffset.toString()
-      })
-      if (searchTerm && searchTerm.length >= 1) {
-        params.append('search', searchTerm)
-      }
-      if (selectedBodyPart) {
-        params.append('bodyPart', selectedBodyPart)
-      }
-      if (!searchTerm && !selectedBodyPart) {
+
+      const params = new URLSearchParams({ limit: '30', offset: customOffset.toString() })
+      if (searchTerm && searchTerm.length >= 2) params.append('search', searchTerm)
+      if (selectedBodyPart) params.append('bodyPart', selectedBodyPart)
+
+      if (!selectedBodyPart && (!searchTerm || searchTerm.length < 2)) {
         setEjercicios([])
-        setFilteredEjercicios([])
         setLoadingEjercicios(false)
         setIsFetchingMore(false)
         setHasMore(false)
         return
       }
-      if (searchTerm && !selectedBodyPart && searchTerm.length < 2) {
-        setEjercicios([])
-        setFilteredEjercicios([])
-        setLoadingEjercicios(false)
-        setIsFetchingMore(false)
-        setHasMore(false)
-        return
-      }
-      const response = await fetch(`/api/ejercicios?${params.toString()}`, {
-        credentials: 'include'
-      })
+
+      const response = await fetch(`/api/ejercicios?${params.toString()}`, { credentials: 'include' })
       const data = await response.json()
+
       if (data.success) {
         if (reset) {
           setEjercicios(data.data || [])
-          setFilteredEjercicios(data.data || [])
         } else {
           setEjercicios(prev => [...prev, ...(data.data || [])])
-          setFilteredEjercicios(prev => [...prev, ...(data.data || [])])
         }
-        const newOffset = customOffset + (data.data?.length || 0)
-        setOffset(newOffset)
+        setOffset(customOffset + (data.data?.length || 0))
         setHasMore(data.pagination?.hasMore ?? false)
       } else {
         setError('Error al cargar ejercicios')
@@ -277,20 +212,12 @@ export default function EditarRutinaPage() {
 
   const handleDayToggle = (day: string) => {
     setRutina(prev => {
-      const newDaysOfWeek = prev.daysOfWeek.includes(day)
+      const newDays = prev.daysOfWeek.includes(day)
         ? prev.daysOfWeek.filter(d => d !== day)
         : [...prev.daysOfWeek, day]
-      
-      const newEjerciciosPorDia = { ...prev.ejerciciosPorDia }
-      if (!newDaysOfWeek.includes(day)) {
-        delete newEjerciciosPorDia[day]
-      }
-      
-      return {
-        ...prev,
-        daysOfWeek: newDaysOfWeek,
-        ejerciciosPorDia: newEjerciciosPorDia
-      }
+      const newEj = { ...prev.ejerciciosPorDia }
+      if (!newDays.includes(day)) delete newEj[day]
+      return { ...prev, daysOfWeek: newDays, ejerciciosPorDia: newEj }
     })
   }
 
@@ -303,11 +230,9 @@ export default function EditarRutinaPage() {
 
   const confirmAddEjercicio = () => {
     if (!selectedEjercicio || !selectedDay) return
-
     const newEjercicio: RutinaEjercicio = {
       ejercicioId: selectedEjercicio.id,
       ejercicioName: selectedEjercicio.name,
-      ejercicioNameEs: selectedEjercicio.nameEs,
       bodyPart: selectedEjercicio.bodyPart,
       equipment: selectedEjercicio.equipment,
       target: selectedEjercicio.target,
@@ -316,7 +241,6 @@ export default function EditarRutinaPage() {
       order: (rutina.ejerciciosPorDia[selectedDay]?.length || 0) + 1,
       sets: ejercicioConfig.sets
     }
-
     setRutina(prev => ({
       ...prev,
       ejerciciosPorDia: {
@@ -324,7 +248,6 @@ export default function EditarRutinaPage() {
         [selectedDay]: [...(prev.ejerciciosPorDia[selectedDay] || []), newEjercicio]
       }
     }))
-
     setShowEjercicioConfig(false)
     setSelectedEjercicio(null)
     setSelectedDay('')
@@ -342,62 +265,30 @@ export default function EditarRutinaPage() {
   }
 
   const moveEjercicio = (day: string, index: number, direction: 'up' | 'down') => {
-    const ejerciciosDelDia = rutina.ejerciciosPorDia[day] || []
+    const list = rutina.ejerciciosPorDia[day] || []
     const newIndex = direction === 'up' ? index - 1 : index + 1
-    if (newIndex < 0 || newIndex >= ejerciciosDelDia.length) return
-
+    if (newIndex < 0 || newIndex >= list.length) return
     setRutina(prev => {
-      const newEjercicios = [...ejerciciosDelDia]
-      const [movedItem] = newEjercicios.splice(index, 1)
-      newEjercicios.splice(newIndex, 0, movedItem)
-      
-      const updatedEjercicios = newEjercicios.map((ejercicio, i) => ({
-        ...ejercicio,
-        order: i + 1
-      }))
-
-      return {
-        ...prev,
-        ejerciciosPorDia: {
-          ...prev.ejerciciosPorDia,
-          [day]: updatedEjercicios
-        }
-      }
+      const newList = [...list]
+      const [moved] = newList.splice(index, 1)
+      newList.splice(newIndex, 0, moved)
+      const updated = newList.map((ej, i) => ({ ...ej, order: i + 1 }))
+      return { ...prev, ejerciciosPorDia: { ...prev.ejerciciosPorDia, [day]: updated } }
     })
   }
 
   const saveRutina = async () => {
     setError('')
-    
-    if (!rutina.name.trim()) {
-      setError('El nombre de la rutina es requerido')
-      return
-    }
+    if (!rutina.name.trim()) { setError('El nombre de la rutina es requerido'); return }
+    if (rutina.name.trim().length < 3) { setError('El nombre debe tener al menos 3 caracteres'); return }
+    if (rutina.daysOfWeek.length === 0) { setError('Debes seleccionar al menos un día'); return }
 
-    if (rutina.name.trim().length < 3) {
-      setError('El nombre debe tener al menos 3 caracteres')
-      return
-    }
-
-    if (rutina.daysOfWeek.length === 0) {
-      setError('Debes seleccionar al menos un día de la semana')
-      return
-    }
-
-    const totalEjercicios = Object.values(rutina.ejerciciosPorDia).reduce(
-      (acc, ejercicios) => acc + ejercicios.length, 0
-    )
-
-    if (totalEjercicios === 0) {
-      setError('Debes agregar al menos un ejercicio a la rutina')
-      return
-    }
+    const totalEjercicios = Object.values(rutina.ejerciciosPorDia).reduce((acc, ejs) => acc + ejs.length, 0)
+    if (totalEjercicios === 0) { setError('Debes agregar al menos un ejercicio'); return }
 
     try {
       setSaving(true)
-      
       const allEjercicios = Object.values(rutina.ejerciciosPorDia).flat()
-
       const response = await fetch(`/api/rutinas/${rutinaId}`, {
         method: 'PUT',
         credentials: 'include',
@@ -410,14 +301,10 @@ export default function EditarRutinaPage() {
           isActive: rutina.isActive
         })
       })
-
       const data = await response.json()
-
       if (data.success) {
-        // Mostrar mensaje de éxito sin redirigir
         setError('')
         setSuccessMessage('✅ Rutina actualizada correctamente')
-        // Ocultar mensaje después de 3 segundos
         setTimeout(() => setSuccessMessage(''), 3000)
       } else {
         setError(data.error || 'Error al actualizar rutina')
@@ -428,21 +315,6 @@ export default function EditarRutinaPage() {
       setSaving(false)
     }
   }
-
-  const BODY_PARTS_MAP: Record<string, string> = {
-    'back': 'Espalda',
-    'cardio': 'Cardio',
-    'chest': 'Pecho',
-    'lower arms': 'Antebrazos',
-    'lower legs': 'Piernas Inf.',
-    'neck': 'Cuello',
-    'shoulders': 'Hombros',
-    'upper arms': 'Brazos',
-    'upper legs': 'Piernas',
-    'waist': 'Core'
-  }
-  
-  const bodyParts = ['back', 'cardio', 'chest', 'lower arms', 'lower legs', 'neck', 'shoulders', 'upper arms', 'upper legs', 'waist']
 
   if (loading) {
     return (
@@ -460,39 +332,22 @@ export default function EditarRutinaPage() {
           <p className="text-gray-600">Modifica tu rutina de entrenamiento</p>
         </div>
 
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
-          </div>
-        )}
-
+        {error && <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}
         {successMessage && (
-          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center">
-            <span>{successMessage}</span>
-          </div>
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">{successMessage}</div>
         )}
 
         <div className="space-y-8">
           {/* Información básica */}
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Información Básica
-            </h2>
-            
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Información Básica</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Nombre de la rutina *
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Nombre de la rutina *</label>
                 <input
                   type="text"
                   value={rutina.name}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (value.length <= 50) {
-                      setRutina(prev => ({ ...prev, name: value }))
-                    }
-                  }}
+                  onChange={(e) => { if (e.target.value.length <= 50) setRutina(prev => ({ ...prev, name: e.target.value })) }}
                   className={`mt-1 block w-full rounded-md shadow-sm ${
                     rutina.name.trim().length < 3 && rutina.name.length > 0
                       ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
@@ -506,30 +361,19 @@ export default function EditarRutinaPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Descripción
-                </label>
+                <label className="block text-sm font-medium text-gray-700">Descripción</label>
                 <textarea
                   value={rutina.description}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (value.length <= 200) {
-                      setRutina(prev => ({ ...prev, description: value }))
-                    }
-                  }}
+                  onChange={(e) => { if (e.target.value.length <= 200) setRutina(prev => ({ ...prev, description: e.target.value })) }}
                   rows={3}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Describe tu rutina..."
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  {rutina.description.length}/200 caracteres
-                </p>
+                <p className="text-xs text-gray-500 mt-1">{rutina.description.length}/200 caracteres</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Días de entrenamiento *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Días de entrenamiento *</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
                   {DAYS_OF_WEEK.map((day) => (
                     <button
@@ -560,75 +404,47 @@ export default function EditarRutinaPage() {
                       {generateDayTitle(day, rutina.ejerciciosPorDia[day] || [])}
                     </h3>
                     <button
-                      onClick={() => {
-                        setSelectedDay(day)
-                        setShowEjercicioSelector(true)
-                      }}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      onClick={() => { setSelectedDay(day); setShowEjercicioSelector(true) }}
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                     >
                       <PlusIcon className="h-4 w-4 mr-2" />
                       Agregar Ejercicio
                     </button>
                   </div>
 
-                  {rutina.ejerciciosPorDia[day]?.length === 0 || !rutina.ejerciciosPorDia[day] ? (
+                  {!rutina.ejerciciosPorDia[day] || rutina.ejerciciosPorDia[day].length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      No hay ejercicios para este día. Haz clic en "Agregar Ejercicio" para comenzar.
+                      No hay ejercicios para este día. Haz clic en &quot;Agregar Ejercicio&quot; para comenzar.
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {rutina.ejerciciosPorDia[day].map((ejercicio, index) => (
                         <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-start justify-between">
                             <div className="flex items-start space-x-3">
                               {ejercicio.gifUrl && (
-                                <img
-                                  src={ejercicio.gifUrl}
-                                  alt={ejercicio.ejercicioNameEs}
-                                  className="w-16 h-16 rounded object-cover"
-                                />
+                                <img src={ejercicio.gifUrl} alt={ejercicio.ejercicioName} className="w-16 h-16 rounded object-cover" />
                               )}
                               <div>
                                 <div className="flex items-center space-x-2 mb-1">
-                                  <span className="text-sm font-medium text-gray-500">
-                                    #{ejercicio.order}
-                                  </span>
-                                  <h4 className="text-lg font-medium text-gray-900">
-                                    {ejercicio.ejercicioNameEs || ejercicio.ejercicioName}
-                                  </h4>
+                                  <span className="text-sm font-medium text-gray-500">#{ejercicio.order}</span>
+                                  <h4 className="text-lg font-medium text-gray-900">{ejercicio.ejercicioName}</h4>
                                 </div>
-                                <p className="text-sm text-gray-600 mb-2">
-                                  {ejercicio.bodyPart} • {ejercicio.equipment}
-                                </p>
+                                <p className="text-sm text-gray-600 mb-2">{ejercicio.bodyPart} • {ejercicio.equipment}</p>
                                 <div className="flex flex-wrap gap-2 text-sm">
-                                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold">
-                                    {ejercicio.sets} series
-                                  </span>
-                                  <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                                    Peso y reps se anotan al entrenar
-                                  </span>
+                                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold">{ejercicio.sets} series</span>
+                                  <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Peso y reps se anotan al entrenar</span>
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => moveEjercicio(day, index, 'up')}
-                                disabled={index === 0}
-                                className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
-                              >
+                              <button onClick={() => moveEjercicio(day, index, 'up')} disabled={index === 0} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30">
                                 <ChevronUpIcon className="h-5 w-5" />
                               </button>
-                              <button
-                                onClick={() => moveEjercicio(day, index, 'down')}
-                                disabled={index === rutina.ejerciciosPorDia[day].length - 1}
-                                className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
-                              >
+                              <button onClick={() => moveEjercicio(day, index, 'down')} disabled={index === rutina.ejerciciosPorDia[day].length - 1} className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30">
                                 <ChevronDownIcon className="h-5 w-5" />
                               </button>
-                              <button
-                                onClick={() => removeEjercicioFromDay(day, index)}
-                                className="p-1 text-red-400 hover:text-red-600"
-                              >
+                              <button onClick={() => removeEjercicioFromDay(day, index)} className="p-1 text-red-400 hover:text-red-600">
                                 <TrashIcon className="h-5 w-5" />
                               </button>
                             </div>
@@ -644,34 +460,22 @@ export default function EditarRutinaPage() {
 
           {/* Botones de acción */}
           <div className="flex items-center justify-end space-x-4 bg-white shadow rounded-lg p-6">
-            <button
-              onClick={() => router.push('/rutinas')}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
+            <button onClick={() => router.push('/rutinas')} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
               Cancelar
             </button>
-            <button
-              onClick={saveRutina}
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
+            <button onClick={saveRutina} disabled={saving} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
               {saving ? 'Guardando...' : 'Guardar Cambios'}
             </button>
           </div>
         </div>
 
-        {/* Modal de selección de ejercicios */}
+        {/* Modal selector de ejercicios */}
         {showEjercicioSelector && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
               <div className="p-6 border-b flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Seleccionar Ejercicio para {selectedDay}
-                </h2>
-                <button
-                  onClick={() => setShowEjercicioSelector(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <h2 className="text-2xl font-bold text-gray-900">Seleccionar Ejercicio para {selectedDay}</h2>
+                <button onClick={() => setShowEjercicioSelector(false)} className="text-gray-400 hover:text-gray-600">
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
@@ -683,33 +487,28 @@ export default function EditarRutinaPage() {
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Buscar por nombre o músculo..."
+                    placeholder="Search exercises..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setSelectedBodyPart('')}
                     className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                      selectedBodyPart === ''
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      selectedBodyPart === '' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    Todos
+                    All
                   </button>
-                  {bodyParts.map((part) => (
+                  {Object.entries(BODY_PART_LABELS).map(([value, label]) => (
                     <button
-                      key={part}
-                      onClick={() => setSelectedBodyPart(part)}
+                      key={value}
+                      onClick={() => setSelectedBodyPart(value)}
                       className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                        selectedBodyPart === part
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        selectedBodyPart === value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
-                      {BODY_PARTS_MAP[part] || part}
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -732,7 +531,7 @@ export default function EditarRutinaPage() {
                     <p className="font-semibold mb-1 text-gray-700">Escribe más caracteres</p>
                     <p className="text-sm text-gray-500">Necesitas al menos 2 letras para buscar</p>
                   </div>
-                ) : filteredEjercicios.length === 0 ? (
+                ) : ejercicios.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="text-4xl mb-2">😕</div>
                     <p className="text-gray-700">No se encontraron ejercicios</p>
@@ -741,7 +540,7 @@ export default function EditarRutinaPage() {
                 ) : (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filteredEjercicios.map((ejercicio) => (
+                      {ejercicios.map((ejercicio) => (
                         <div
                           key={ejercicio.id}
                           onClick={() => addEjercicioToDay(ejercicio, selectedDay)}
@@ -749,47 +548,27 @@ export default function EditarRutinaPage() {
                         >
                           <div className="flex items-start space-x-3">
                             {ejercicio.gifUrl && (
-                              <img
-                                src={ejercicio.gifUrl}
-                                alt={ejercicio.nameEs}
-                                className="w-20 h-20 rounded object-cover"
-                                loading="lazy"
-                              />
+                              <img src={ejercicio.gifUrl} alt={ejercicio.name} className="w-20 h-20 rounded object-cover" loading="lazy" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-gray-900 truncate">
-                                {ejercicio.nameEs || ejercicio.name}
-                              </h3>
-                              <p className="text-sm text-gray-600">
-                                {ejercicio.bodyPartEs || ejercicio.bodyPart}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {ejercicio.equipmentEs || ejercicio.equipment}
-                              </p>
+                              <h3 className="font-medium text-gray-900 truncate">{ejercicio.name}</h3>
+                              <p className="text-sm text-gray-600">{ejercicio.bodyPart}</p>
+                              <p className="text-xs text-gray-500">{ejercicio.equipment}</p>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                    {/* Infinite scroll sentinel */}
-                    {filteredEjercicios.length > 0 && (
-                      <div 
-                        ref={observerRef} 
-                        className="w-full py-4 flex items-center justify-center"
-                        style={{ minHeight: '60px' }}
-                      >
+                    {ejercicios.length > 0 && (
+                      <div ref={observerRef} className="w-full py-4 flex items-center justify-center" style={{ minHeight: '60px' }}>
                         {isFetchingMore && (
                           <div className="flex items-center gap-2">
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                            <span className="text-blue-600 text-sm font-medium">Cargando más ejercicios...</span>
+                            <span className="text-blue-600 text-sm font-medium">Cargando más...</span>
                           </div>
                         )}
-                        {!isFetchingMore && hasMore && (
-                          <span className="text-gray-400 text-xs">Desplázate para cargar más</span>
-                        )}
-                        {!hasMore && !loadingEjercicios && (
-                          <span className="text-gray-400 text-sm">✓ Todos los ejercicios cargados</span>
-                        )}
+                        {!isFetchingMore && hasMore && <span className="text-gray-400 text-xs">Desplázate para cargar más</span>}
+                        {!hasMore && !loadingEjercicios && <span className="text-gray-400 text-sm">✓ Todos los ejercicios cargados</span>}
                       </div>
                     )}
                   </>
@@ -799,62 +578,44 @@ export default function EditarRutinaPage() {
           </div>
         )}
 
-        {/* Modal de configuración de ejercicio */}
+        {/* Modal configuración de ejercicio */}
         {showEjercicioConfig && selectedEjercicio && (
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
               <div className="p-6 border-b">
-                <h2 className="text-xl font-bold text-gray-900">
-                  Configurar Ejercicio
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {selectedEjercicio.nameEs || selectedEjercicio.name}
-                </p>
+                <h2 className="text-xl font-bold text-gray-900">Configurar Ejercicio</h2>
+                <p className="text-sm text-gray-600 mt-1">{selectedEjercicio.name}</p>
               </div>
 
               <div className="p-6 space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-800">
-                    💡 <strong>Nota:</strong> Solo defines cuántas series harás de este ejercicio. 
-                    El peso y repeticiones los anotarás al entrenar.
+                    💡 <strong>Nota:</strong> Solo defines cuántas series harás. Peso y reps se anotan al entrenar.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ¿Cuántas series? *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">¿Cuántas series? *</label>
                   <input
                     type="number"
                     min="1"
                     max="10"
                     value={ejercicioConfig.sets}
-                    onChange={(e) => setEjercicioConfig({ 
-                      sets: parseInt(e.target.value) || 1 
-                    })}
+                    onChange={(e) => setEjercicioConfig({ sets: parseInt(e.target.value) || 1 })}
                     className="block w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  <p className="mt-2 text-sm text-gray-500">
-                    Ejemplo: Si haces 4 sets de este ejercicio, pon 4
-                  </p>
+                  <p className="mt-2 text-sm text-gray-500">Ejemplo: Si haces 4 sets, pon 4</p>
                 </div>
               </div>
 
               <div className="p-6 border-t flex items-center justify-end space-x-3">
                 <button
-                  onClick={() => {
-                    setShowEjercicioConfig(false)
-                    setSelectedEjercicio(null)
-                    setEjercicioConfig({ sets: 3 })
-                  }}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  onClick={() => { setShowEjercicioConfig(false); setSelectedEjercicio(null); setEjercicioConfig({ sets: 3 }) }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                 >
                   Cancelar
                 </button>
-                <button
-                  onClick={confirmAddEjercicio}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
+                <button onClick={confirmAddEjercicio} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                   Agregar Ejercicio
                 </button>
               </div>

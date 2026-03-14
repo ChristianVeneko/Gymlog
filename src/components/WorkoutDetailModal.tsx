@@ -19,7 +19,7 @@ interface WorkoutSet {
 interface WorkoutExercise {
   ejercicioId: string
   ejercicioName: string
-  ejercicioNameEs: string | null
+
   bodyPart: string
   gifUrl: string
   sets: WorkoutSet[]
@@ -44,19 +44,7 @@ interface WorkoutDetailModalProps {
   onClose: () => void
 }
 
-// Mapeo de bodyParts en inglés a español
-const BODY_PART_TRANSLATIONS: Record<string, string> = {
-  'back': 'Espalda',
-  'cardio': 'Cardio',
-  'chest': 'Pecho',
-  'lower arms': 'Brazos',
-  'lower legs': 'Piernas',
-  'neck': 'Cuello',
-  'shoulders': 'Hombros',
-  'upper arms': 'Brazos',
-  'upper legs': 'Piernas',
-  'waist': 'Core'
-}
+
 
 export default function WorkoutDetailModal({ workoutId, onClose }: WorkoutDetailModalProps) {
   const [workout, setWorkout] = useState<WorkoutDetail | null>(null)
@@ -171,16 +159,16 @@ export default function WorkoutDetailModal({ workoutId, onClose }: WorkoutDetail
                     {ejercicio.gifUrl && (
                       <img 
                         src={ejercicio.gifUrl} 
-                        alt={ejercicio.ejercicioNameEs || ejercicio.ejercicioName}
+                        alt={ejercicio.ejercicioName}
                         className="w-20 h-20 rounded object-cover"
                       />
                     )}
                     <div className="flex-1">
                       <h3 className="font-bold text-lg text-gray-900">
-                        {idx + 1}. {ejercicio.ejercicioNameEs || ejercicio.ejercicioName}
+                        {idx + 1}. {ejercicio.ejercicioName}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {BODY_PART_TRANSLATIONS[ejercicio.bodyPart] || ejercicio.bodyPart}
+                        {ejercicio.bodyPart}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {ejercicio.sets.length} {ejercicio.sets.length === 1 ? 'serie' : 'series'}
